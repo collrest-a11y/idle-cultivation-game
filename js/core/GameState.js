@@ -632,11 +632,88 @@ class GameState {
                 scriptureRelated: {},
                 milestones: {}
             },
+            // Combat System Data
             combat: {
                 wins: 0,
                 losses: 0,
                 streak: 0,
                 rank: 1000
+            },
+            combatStats: {
+                combatsStarted: 0,
+                combatsWon: 0,
+                combatsLost: 0,
+                totalDamageDealt: 0,
+                totalDamageReceived: 0,
+                averageCombatDuration: 0,
+                criticalHits: 0,
+                perfectVictories: 0
+            },
+            // Ranking System Data
+            playerRanking: {
+                currentRating: 1000,
+                peakRating: 1000,
+                currentTier: { name: 'Bronze', min: 0, max: 1199, color: '#CD7F32', key: 'BRONZE' },
+                peakTier: { name: 'Bronze', min: 0, max: 1199, color: '#CD7F32', key: 'BRONZE' },
+                wins: 0,
+                losses: 0,
+                winStreak: 0,
+                longestWinStreak: 0,
+                gamesPlayed: 0,
+                rankingHistory: []
+            },
+            seasonData: {
+                currentSeason: 1,
+                seasonStartTime: Date.now(),
+                seasonEndTime: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days
+                previousSeasonRating: 1000,
+                seasonWins: 0,
+                seasonLosses: 0,
+                seasonPeakRating: 1000,
+                claimedSeasonRewards: false
+            },
+            rankingStats: {
+                totalRatingGained: 0,
+                totalRatingLost: 0,
+                averageOpponentRating: 1000,
+                biggestUpset: { ratingDifference: 0, gained: 0 },
+                longestWinStreak: 0,
+                highestRating: 1000,
+                seasonsCompleted: 0
+            },
+            // Duel System Data
+            duelStats: {
+                totalDuels: 0,
+                playerVsPlayer: 0,
+                playerVsAI: 0,
+                successfulMatches: 0,
+                averageMatchmakingTime: 0,
+                queueTimeouts: 0
+            },
+            // Tournament System Data
+            playerTournamentData: {
+                tournamentsEntered: 0,
+                tournamentsWon: 0,
+                tournamentWins: 0,
+                tournamentLosses: 0,
+                bestFinish: null,
+                titles: [],
+                totalRewardsEarned: { jade: 0, spiritCrystals: 0 }
+            },
+            tournamentStats: {
+                totalTournaments: 0,
+                averageParticipants: 0,
+                mostPopularType: null,
+                completionRate: 0
+            },
+            tournamentHistory: [],
+            // Combat Integration Data
+            combatIntegrationStats: {
+                totalCombats: 0,
+                totalDuels: 0,
+                totalTournaments: 0,
+                systemUptime: 0,
+                lastMaintenanceTime: 0
             },
             sect: {
                 id: null,
