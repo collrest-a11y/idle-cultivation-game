@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scripture System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background-color: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .scripture {
+            background-color: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #666;
+        }
+        .rarity-common { border-left-color: #9ca3af; }
+        .rarity-uncommon { border-left-color: #10b981; }
+        .rarity-rare { border-left-color: #3b82f6; }
+        .rarity-epic { border-left-color: #8b5cf6; }
+        .rarity-legendary { border-left-color: #f59e0b; }
+        .rarity-mythical { border-left-color: #ef4444; }
+        button {
+            background-color: #4a5568;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #5a6578;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-item {
+            background-color: #3a3a3a;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .log {
+            background-color: #111;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Scripture Collection & Gacha System Test</h1>
+
+        <div class="section">
+            <h2>System Status</h2>
+            <div id="systemStatus">Initializing...</div>
+        </div>
+
+        <div class="section">
+            <h2>Resources</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <strong>Jade:</strong> <span id="jade">500</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Spirit Crystals:</strong> <span id="crystals">100</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Enhancement Stones:</strong> <span id="enhancementStones">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Awakening Stones:</strong> <span id="awakeningStones">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Gacha System</h2>
+            <div>
+                <label for="poolSelect">Pool:</label>
+                <select id="poolSelect">
+                    <option value="standard">Standard Pool</option>
+                    <option value="premium">Premium Pool</option>
+                    <option value="qi_focus">Qi Focus Pool</option>
+                    <option value="body_focus">Body Focus Pool</option>
+                </select>
+            </div>
+            <div>
+                <button onclick="pullSingle()">Single Pull</button>
+                <button onclick="pullMultiple(5)">5x Pull</button>
+                <button onclick="pullMultiple(10)">10x Pull</button>
+                <button onclick="simulateGacha()">Simulate 100 Pulls</button>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <strong>Total Pulls:</strong> <span id="totalPulls">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Epic Pity:</strong> <span id="epicPity">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Legendary Pity:</strong> <span id="legendaryPity">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Luck Score:</strong> <span id="luckScore">100</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Scripture Collection</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <strong>Total Scriptures:</strong> <span id="totalScriptures">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Total Power:</strong> <span id="totalPower">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Collection Complete:</strong> <span id="collectionComplete">0%</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Equipped:</strong> <span id="equippedCount">0/5</span>
+                </div>
+            </div>
+            <div>
+                <button onclick="autoEquip()">Auto-Equip Best</button>
+                <button onclick="showRecommendations()">Get Recommendations</button>
+            </div>
+            <div id="scriptureList"></div>
+        </div>
+
+        <div class="section">
+            <h2>Enhancement System</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <strong>Total Enhancements:</strong> <span id="totalEnhancements">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Success Rate:</strong> <span id="successRate">0%</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Awakenings:</strong> <span id="awakenings">0</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Breakthroughs:</strong> <span id="breakthroughs">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Active Effects</h2>
+            <div id="activeEffects"></div>
+        </div>
+
+        <div class="section">
+            <h2>Event Log</h2>
+            <div class="log" id="eventLog"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <!-- Include all the system files -->
+    <script src="js/data/scripture-data.js"></script>
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/systems/GachaSystem.js"></script>
+    <script src="js/systems/ScriptureManager.js"></script>
+    <script src="js/systems/EnhancementSystem.js"></script>
+    <script src="js/systems/ScriptureIntegration.js"></script>
+
+    <script>
+        // Global system instances
+        let eventManager;
+        let gameState;
+        let gachaSystem;
+        let scriptureManager;
+        let enhancementSystem;
+        let scriptureIntegration;
+
+        // Mock cultivation system for testing
+        const mockCultivationSystem = {
+            applyTemporaryEffect: (effect, duration) => {
+                log(`Applied cultivation effect: ${JSON.stringify(effect)}`);
+            }
+        };
+
+        // Initialize all systems
+        async function initializeSystems() {
+            try {
+                log('Initializing scripture systems...');
+
+                // Create instances
+                eventManager = new EventManager();
+                gameState = new GameState();
+                gameState.setEventManager(eventManager);
+
+                gachaSystem = new GachaSystem(gameState, eventManager);
+                scriptureManager = new ScriptureManager(gameState, eventManager);
+                enhancementSystem = new EnhancementSystem(gameState, eventManager);
+                scriptureIntegration = new ScriptureIntegration(gameState, eventManager, mockCultivationSystem);
+
+                // Initialize systems
+                await gachaSystem.initialize();
+                await scriptureManager.initialize();
+                await enhancementSystem.initialize();
+                await scriptureIntegration.initialize();
+
+                // Inject dependencies
+                scriptureIntegration.injectSystems({
+                    gachaSystem,
+                    scriptureManager,
+                    enhancementSystem
+                });
+
+                // Set up UI update listeners
+                setupUIListeners();
+
+                // Initial UI update
+                updateUI();
+
+                log('All systems initialized successfully!');
+                document.getElementById('systemStatus').innerHTML = '<span class="success">All systems online</span>';
+
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                log(`ERROR: ${error.message}`, 'error');
+                document.getElementById('systemStatus').innerHTML = '<span class="error">Initialization failed</span>';
+            }
+        }
+
+        // Set up event listeners for UI updates
+        function setupUIListeners() {
+            eventManager.on('gacha:pull_complete', updateUI);
+            eventManager.on('gacha:multi_pull_complete', updateUI);
+            eventManager.on('scripture:added', updateUI);
+            eventManager.on('scripture:equipped', updateUI);
+            eventManager.on('scripture:enhanced', updateUI);
+            eventManager.on('scripture:achievement_unlocked', (data) => {
+                log(`ACHIEVEMENT: ${data.achievement.name} - ${data.achievement.description}`, 'success');
+            });
+        }
+
+        // Update all UI elements
+        function updateUI() {
+            updateResources();
+            updateGachaStats();
+            updateScriptureStats();
+            updateEnhancementStats();
+            updateActiveEffects();
+            updateScriptureList();
+        }
+
+        // Update resource display
+        function updateResources() {
+            document.getElementById('jade').textContent = gameState.get('player.jade') || 0;
+            document.getElementById('crystals').textContent = gameState.get('player.spiritCrystals') || 0;
+
+            const materials = enhancementSystem.getMaterials();
+            document.getElementById('enhancementStones').textContent = materials.enhancementStones;
+            document.getElementById('awakeningStones').textContent = materials.awakeningStones;
+        }
+
+        // Update gacha statistics
+        function updateGachaStats() {
+            const stats = gachaSystem.getStatistics();
+            const currentPool = gameState.get('gacha.currentPool') || 'standard';
+            const pityInfo = gameState.get(`gacha.pityCounts.${currentPool}`) || { epic: 0, legendary: 0 };
+
+            document.getElementById('totalPulls').textContent = stats.totalPulls;
+            document.getElementById('epicPity').textContent = pityInfo.epic;
+            document.getElementById('legendaryPity').textContent = pityInfo.legendary;
+            document.getElementById('luckScore').textContent = stats.luckScore;
+        }
+
+        // Update scripture statistics
+        function updateScriptureStats() {
+            const stats = scriptureManager.getStatistics();
+            const equipped = scriptureManager.getEquippedScriptures();
+            let equippedCount = 0;
+            for (const slot in equipped) {
+                if (equipped[slot]) equippedCount++;
+            }
+
+            document.getElementById('totalScriptures').textContent = stats.totalScriptures;
+            document.getElementById('totalPower').textContent = Math.floor(stats.totalPower);
+            document.getElementById('collectionComplete').textContent = `${stats.collectionCompletion.toFixed(1)}%`;
+            document.getElementById('equippedCount').textContent = `${equippedCount}/5`;
+        }
+
+        // Update enhancement statistics
+        function updateEnhancementStats() {
+            const stats = enhancementSystem.getStatistics();
+
+            document.getElementById('totalEnhancements').textContent = stats.totalEnhancements;
+            document.getElementById('successRate').textContent = `${(stats.successRate * 100).toFixed(1)}%`;
+            document.getElementById('awakenings').textContent = stats.awakeningsPerformed;
+            document.getElementById('breakthroughs').textContent = stats.breakthroughsAchieved;
+        }
+
+        // Update active effects display
+        function updateActiveEffects() {
+            const effects = scriptureIntegration.getIntegratedEffects();
+            const effectsDiv = document.getElementById('activeEffects');
+
+            let html = '<div class="stats">';
+
+            // Cultivation effects
+            html += `<div class="stat-item">
+                <strong>Qi Bonus:</strong> +${(effects.cultivation.qiMultiplier * 100).toFixed(1)}%
+            </div>`;
+            html += `<div class="stat-item">
+                <strong>Body Bonus:</strong> +${(effects.cultivation.bodyMultiplier * 100).toFixed(1)}%
+            </div>`;
+            html += `<div class="stat-item">
+                <strong>Cultivation Speed:</strong> +${(effects.cultivation.experienceBonus * 100).toFixed(1)}%
+            </div>`;
+
+            // Combat effects
+            html += `<div class="stat-item">
+                <strong>Combat Power:</strong> +${Math.floor(effects.combat.powerBonus)}
+            </div>`;
+
+            html += '</div>';
+
+            // Special effects
+            if (effects.special.size > 0) {
+                html += '<h4>Special Effects:</h4>';
+                for (const [name, effect] of effects.special) {
+                    html += `<div class="scripture"><strong>${name}:</strong> ${effect.description}</div>`;
+                }
+            }
+
+            effectsDiv.innerHTML = html;
+        }
+
+        // Update scripture list display
+        function updateScriptureList() {
+            const scriptures = scriptureManager.getScriptures({ limit: 10 });
+            const listDiv = document.getElementById('scriptureList');
+
+            if (scriptures.length === 0) {
+                listDiv.innerHTML = '<p>No scriptures collected yet. Try pulling from the gacha!</p>';
+                return;
+            }
+
+            let html = '<h4>Recent Scriptures:</h4>';
+            scriptures.forEach(scripture => {
+                const power = ENHANCEMENT_FORMULAS.scripturepower(scripture);
+                html += `
+                    <div class="scripture rarity-${scripture.rarity.toLowerCase()}">
+                        <strong>${scripture.name}</strong>
+                        <span class="rarity-${scripture.rarity.toLowerCase()}">[${scripture.rarity}]</span>
+                        <br>
+                        Level: ${scripture.level || 1} | Power: ${Math.floor(power)} | Category: ${scripture.category}
+                        <br>
+                        <button onclick="enhanceScripture('${scripture.id}')">Enhance</button>
+                        <button onclick="equipScripture('${scripture.id}')">Equip Primary</button>
+                    </div>
+                `;
+            });
+
+            listDiv.innerHTML = html;
+        }
+
+        // Gacha functions
+        async function pullSingle() {
+            const poolId = document.getElementById('poolSelect').value;
+            const result = await gachaSystem.pullSingle(poolId);
+
+            if (result.success) {
+                log(`Pulled: ${result.result.name} [${result.result.rarity}]`, 'success');
+            } else {
+                log(`Pull failed: ${result.reason}`, 'error');
+            }
+        }
+
+        async function pullMultiple(count) {
+            const poolId = document.getElementById('poolSelect').value;
+            const result = await gachaSystem.pullMultiple(count, poolId);
+
+            if (result.success) {
+                log(`${count}x Pull completed! ${result.rarePulls} rare pulls.`, 'success');
+                result.results.forEach(r => {
+                    if (r.rarity === 'Epic' || r.rarity === 'Legendary' || r.rarity === 'Mythical') {
+                        log(`  ★ ${r.name} [${r.rarity}]`, 'warning');
+                    }
+                });
+            } else {
+                log(`Multi-pull failed: ${result.reason}`, 'error');
+            }
+        }
+
+        function simulateGacha() {
+            const poolId = document.getElementById('poolSelect').value;
+            const simulation = gachaSystem.simulatePulls(100, poolId);
+
+            log('Simulation of 100 pulls:', 'warning');
+            for (const [rarity, percentage] of Object.entries(simulation.percentages)) {
+                log(`  ${rarity}: ${percentage}%`);
+            }
+        }
+
+        // Scripture functions
+        function autoEquip() {
+            const result = scriptureManager.autoEquip();
+            log(`Auto-equipped ${result.changesCount} scriptures`, 'success');
+        }
+
+        function showRecommendations() {
+            const recommendations = scriptureManager.getRecommendations(3);
+            log('Scripture recommendations:', 'warning');
+            recommendations.forEach(rec => {
+                log(`  ${rec.scripture.name} - ${rec.reason}`);
+            });
+        }
+
+        async function enhanceScripture(scriptureId) {
+            const result = await enhancementSystem.enhanceScripture(scriptureId);
+
+            if (result.success) {
+                log(`Enhanced ${result.scripture.name} to level ${result.newLevel}`, 'success');
+            } else {
+                log(`Enhancement failed: ${result.reason}`, 'error');
+            }
+        }
+
+        function equipScripture(scriptureId) {
+            const result = scriptureManager.equipScripture(scriptureId, 'primary');
+
+            if (result.success) {
+                log(`Equipped scripture to primary slot`, 'success');
+            } else {
+                log(`Failed to equip: ${result.reason}`, 'error');
+            }
+        }
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            entry.innerHTML = `<span style="color: #666">[${timestamp}]</span> ${message}`;
+
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = '';
+        }
+
+        // Give player some starting resources for testing
+        function addTestResources() {
+            gameState.increment('player.jade', 10000);
+            gameState.increment('player.spiritCrystals', 1000);
+            enhancementSystem.addMaterials({
+                enhancementStones: 50,
+                awakeningStones: 10,
+                essenceOfCultivation: 100
+            });
+            updateUI();
+            log('Added test resources', 'success');
+        }
+
+        // Initialize everything when page loads
+        window.addEventListener('load', async () => {
+            await initializeSystems();
+            addTestResources();
+        });
+    </script>
+</body>
+</html>
