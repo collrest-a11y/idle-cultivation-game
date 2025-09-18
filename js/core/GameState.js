@@ -486,7 +486,9 @@ class GameState {
                 spiritCrystals: 100,
                 shards: 0,
                 power: 1.0,
-                offlineTime: 0
+                offlineTime: 0,
+                availableTitles: [],
+                currentTitle: null
             },
             cultivation: {
                 qi: {
@@ -647,6 +649,76 @@ class GameState {
                 completed: false,
                 currentStep: 0,
                 completedSteps: []
+            },
+            // Quest System Data
+            questState: {
+                activeQuests: {
+                    daily: [],
+                    weekly: [],
+                    milestone: [],
+                    chain: [],
+                    special: []
+                },
+                completedQuests: [],
+                failedQuests: [],
+                abandonedQuests: [],
+                lastDailyRefresh: 0,
+                lastWeeklyRefresh: 0,
+                questIdCounter: 1
+            },
+            questStats: {
+                totalGenerated: 0,
+                totalCompleted: 0,
+                totalFailed: 0,
+                totalAbandoned: 0,
+                completionRate: 0,
+                averageCompletionTime: 0,
+                favoriteCategory: null,
+                perfectQuests: 0
+            },
+            // Achievement System Data
+            achievementState: {
+                unlockedAchievements: [],
+                progressTracking: [],
+                achievementPoints: 0,
+                totalAchievements: 0,
+                hiddenAchievementsFound: 0,
+                lastUnlockTime: 0
+            },
+            achievementStats: {
+                totalChecks: 0,
+                totalUnlocks: 0,
+                averageUnlockTime: 0,
+                rareUnlocks: 0,
+                perfectUnlocks: 0,
+                categoryProgress: [],
+                pointsEarned: 0
+            },
+            // Reward System Data
+            rewardState: {
+                activeBonuses: [],
+                rewardMultipliers: [],
+                temporaryEffects: [],
+                rewardHistory: [],
+                totalRewardsAwarded: 0
+            },
+            rewardStats: {
+                totalJadeAwarded: 0,
+                totalCrystalsAwarded: 0,
+                totalShardsAwarded: 0,
+                totalExperienceAwarded: 0,
+                questRewards: 0,
+                achievementRewards: 0,
+                bonusRewards: 0,
+                averageRewardValue: 0,
+                biggestReward: 0
+            },
+            // Quest Integration Data
+            questIntegrationStats: {
+                questsCompleted: 0,
+                achievementsUnlocked: 0,
+                totalRewardValue: 0,
+                crossSystemEvents: 0
             },
             settings: {
                 autoSave: true,

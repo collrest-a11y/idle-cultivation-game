@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cultivation System Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: #fff; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #0af; }
+        .status { margin: 10px 0; }
+        button { padding: 10px 15px; margin: 5px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; }
+        button:hover { background: #444; }
+        pre { background: #000; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Cultivation System Test</h1>
+
+    <div class="test-section">
+        <h2>System Initialization Test</h2>
+        <div id="init-status" class="status">Testing...</div>
+        <button onclick="testInitialization()">Run Initialization Test</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Cultivation Progress Test</h2>
+        <div id="cultivation-status" class="status">Ready to test...</div>
+        <button onclick="testCultivation()">Start Cultivation Test</button>
+        <button onclick="stopCultivation()">Stop Cultivation</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Breakthrough Test</h2>
+        <div id="breakthrough-status" class="status">Ready to test...</div>
+        <button onclick="testBreakthrough()">Test Breakthrough</button>
+    </div>
+
+    <div class="test-section">
+        <h2>System Status</h2>
+        <div id="system-status" class="status">Click to view status</div>
+        <button onclick="showStatus()">Show Current Status</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <div id="console-output">
+            <pre id="console-log"></pre>
+        </div>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <!-- Core Game Engine (same as main game) -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/core/TimeManager.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/DataValidator.js"></script>
+    <script src="js/core/MigrationManager.js"></script>
+    <script src="js/utils/Compression.js"></script>
+
+    <!-- Cultivation System -->
+    <script src="js/data/cultivation-data.js"></script>
+    <script src="js/systems/CultivationSystem.js"></script>
+    <script src="js/systems/RealmManager.js"></script>
+    <script src="js/systems/TechniqueManager.js"></script>
+    <script src="js/systems/OfflineCalculator.js"></script>
+    <script src="js/systems/CultivationIntegration.js"></script>
+
+    <script>
+        // Test environment setup
+        let testGame = null;
+        let cultivationIntegration = null;
+        let testResults = [];
+
+        // Console logging
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+
+        function logToConsole(message, type = 'log') {
+            const consoleElement = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            consoleElement.textContent += logEntry;
+            consoleElement.scrollTop = consoleElement.scrollHeight;
+        }
+
+        // Override console methods
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToConsole(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            logToConsole(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            logToConsole(args.join(' '), 'warn');
+        };
+
+        function clearConsole() {
+            document.getElementById('console-log').textContent = '';
+        }
+
+        async function testInitialization() {
+            const statusDiv = document.getElementById('init-status');
+            statusDiv.innerHTML = '<span class="info">Initializing systems...</span>';
+
+            try {
+                // Initialize core systems
+                const eventManager = new EventManager();
+                const gameState = new GameState();
+                const saveManager = new SaveManager();
+
+                gameState.setEventManager(eventManager);
+                gameState.setSaveManager(saveManager);
+
+                // Initialize cultivation integration
+                cultivationIntegration = getCultivationIntegration();
+                await cultivationIntegration.initialize(gameState, eventManager);
+
+                statusDiv.innerHTML = '<span class="success">✓ All systems initialized successfully!</span>';
+                console.log('Test: Initialization completed successfully');
+
+                testResults.push({ test: 'initialization', status: 'success' });
+
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">✗ Initialization failed: ${error.message}</span>`;
+                console.error('Test: Initialization failed:', error);
+                testResults.push({ test: 'initialization', status: 'failed', error: error.message });
+            }
+        }
+
+        async function testCultivation() {
+            const statusDiv = document.getElementById('cultivation-status');
+
+            if (!cultivationIntegration) {
+                statusDiv.innerHTML = '<span class="error">✗ Must run initialization test first</span>';
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = '<span class="info">Starting cultivation...</span>';
+
+                // Start qi cultivation
+                const result = cultivationIntegration.startCultivation('qi', 'heaven_earth_mantra');
+
+                if (result.success) {
+                    statusDiv.innerHTML = '<span class="success">✓ Cultivation started successfully!</span>';
+
+                    // Monitor progress for a few seconds
+                    let progressCount = 0;
+                    const progressInterval = setInterval(() => {
+                        const status = cultivationIntegration.getCultivationDataForUI();
+                        if (status) {
+                            console.log(`Progress Update ${progressCount + 1}: Qi ${status.qi.experience.toFixed(2)}/${status.qi.experienceRequired} (${(status.qi.progress * 100).toFixed(1)}%)`);
+
+                            progressCount++;
+                            if (progressCount >= 5) {
+                                clearInterval(progressInterval);
+                                statusDiv.innerHTML = '<span class="success">✓ Cultivation progress verified!</span>';
+                            }
+                        }
+                    }, 1000);
+
+                    testResults.push({ test: 'cultivation_start', status: 'success' });
+
+                } else {
+                    statusDiv.innerHTML = `<span class="error">✗ Failed to start cultivation: ${result.reason}</span>`;
+                    testResults.push({ test: 'cultivation_start', status: 'failed', reason: result.reason });
+                }
+
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">✗ Cultivation test failed: ${error.message}</span>`;
+                console.error('Test: Cultivation failed:', error);
+                testResults.push({ test: 'cultivation_start', status: 'failed', error: error.message });
+            }
+        }
+
+        function stopCultivation() {
+            if (!cultivationIntegration) {
+                return;
+            }
+
+            const result = cultivationIntegration.stopCultivation();
+            const statusDiv = document.getElementById('cultivation-status');
+
+            if (result.success) {
+                statusDiv.innerHTML = '<span class="info">Cultivation stopped</span>';
+                console.log('Test: Cultivation stopped successfully');
+            } else {
+                statusDiv.innerHTML = `<span class="error">✗ Failed to stop cultivation: ${result.error}</span>`;
+                console.error('Test: Failed to stop cultivation:', result.error);
+            }
+        }
+
+        async function testBreakthrough() {
+            const statusDiv = document.getElementById('breakthrough-status');
+
+            if (!cultivationIntegration) {
+                statusDiv.innerHTML = '<span class="error">✗ Must run initialization test first</span>';
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = '<span class="info">Testing breakthrough mechanics...</span>';
+
+                // First, manually set some experience to enable breakthrough
+                const gameState = cultivationIntegration.gameState;
+                gameState.set('cultivation.qi.experience', 150, { source: 'test' });
+
+                // Attempt a cultivation breakthrough
+                const result = cultivationIntegration.attemptBreakthrough('cultivation', 'qi');
+
+                if (result.success) {
+                    statusDiv.innerHTML = '<span class="success">✓ Breakthrough successful!</span>';
+                    console.log(`Test: Breakthrough successful - new level: ${result.newLevel}`);
+                    testResults.push({ test: 'breakthrough', status: 'success', newLevel: result.newLevel });
+                } else {
+                    statusDiv.innerHTML = `<span class="info">Breakthrough attempt completed - ${result.reason || 'failed'}</span>`;
+                    console.log(`Test: Breakthrough attempt - ${result.reason || 'failed'}`);
+                    testResults.push({ test: 'breakthrough', status: 'attempted', reason: result.reason });
+                }
+
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">✗ Breakthrough test failed: ${error.message}</span>`;
+                console.error('Test: Breakthrough test failed:', error);
+                testResults.push({ test: 'breakthrough', status: 'failed', error: error.message });
+            }
+        }
+
+        function showStatus() {
+            const statusDiv = document.getElementById('system-status');
+
+            if (!cultivationIntegration) {
+                statusDiv.innerHTML = '<span class="error">✗ System not initialized</span>';
+                return;
+            }
+
+            try {
+                const status = cultivationIntegration.getCultivationStatus();
+                const uiData = cultivationIntegration.getCultivationDataForUI();
+
+                let html = '<div class="info">';
+                html += `<strong>Cultivation Status:</strong><br>`;
+                html += `Qi: Level ${status.cultivation.state.qi.level} (${status.cultivation.state.qi.experience.toFixed(1)} exp)<br>`;
+                html += `Body: Level ${status.cultivation.state.body.level} (${status.cultivation.state.body.experience.toFixed(1)} exp)<br>`;
+                html += `Realm: ${status.realm.current} Stage ${status.realm.stage}<br>`;
+                html += `Active: ${status.cultivation.isActive ? 'Yes' : 'No'}<br>`;
+                if (status.cultivation.activePath) {
+                    html += `Path: ${status.cultivation.activePath}<br>`;
+                }
+                if (status.techniques.active) {
+                    html += `Technique: ${status.techniques.active}<br>`;
+                }
+                html += '</div>';
+
+                statusDiv.innerHTML = html;
+
+                console.log('Current Status:', JSON.stringify(status, null, 2));
+
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">✗ Failed to get status: ${error.message}</span>`;
+                console.error('Test: Failed to get status:', error);
+            }
+        }
+
+        // Initialize test environment on load
+        window.addEventListener('load', () => {
+            console.log('Cultivation System Test Environment Loaded');
+            console.log('Click "Run Initialization Test" to begin testing');
+        });
+    </script>
+</body>
+</html>

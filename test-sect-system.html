@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sect System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a2e;
+            color: #eee;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #16213e;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .success {
+            background-color: #2d5a2d;
+            border-left: 4px solid #4caf50;
+        }
+        .error {
+            background-color: #5a2d2d;
+            border-left: 4px solid #f44336;
+        }
+        .info {
+            background-color: #2d4a5a;
+            border-left: 4px solid #2196f3;
+        }
+        button {
+            background-color: #0f3460;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #1a4b7a;
+        }
+        pre {
+            background-color: #0d1b2a;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏔️ Sect System Test Suite</h1>
+
+    <div class="test-section">
+        <h2>System Initialization Test</h2>
+        <button onclick="testSystemInitialization()">Test System Init</button>
+        <div id="init-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Sect Creation Test</h2>
+        <button onclick="testSectCreation()">Test Sect Creation</button>
+        <div id="creation-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Sect Activities Test</h2>
+        <button onclick="testSectActivities()">Test Activities</button>
+        <div id="activities-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Integration Test</h2>
+        <button onclick="testIntegration()">Test Integration</button>
+        <div id="integration-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Run All Tests</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="all-results"></div>
+    </div>
+
+    <!-- Core Game Engine -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/core/TimeManager.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/DataValidator.js"></script>
+    <script src="js/core/MigrationManager.js"></script>
+    <script src="js/utils/Compression.js"></script>
+
+    <!-- Game Data -->
+    <script src="js/data/cultivation-data.js"></script>
+    <script src="js/data/sect-data.js"></script>
+
+    <!-- Systems -->
+    <script src="js/systems/CultivationSystem.js"></script>
+    <script src="js/systems/RealmManager.js"></script>
+    <script src="js/systems/TechniqueManager.js"></script>
+    <script src="js/systems/OfflineCalculator.js"></script>
+    <script src="js/systems/CultivationIntegration.js"></script>
+
+    <!-- Sect System -->
+    <script src="js/systems/SectSystem.js"></script>
+    <script src="js/systems/SectManager.js"></script>
+    <script src="js/systems/SectActivities.js"></script>
+    <script src="js/systems/SectCompetition.js"></script>
+    <script src="js/systems/SectIntegration.js"></script>
+
+    <script>
+        // Test framework
+        let testResults = {};
+        let gameState, eventManager, sectSystem, sectManager, sectActivities, sectCompetition, sectIntegration;
+
+        function logTest(category, test, result, message) {
+            if (!testResults[category]) testResults[category] = [];
+            testResults[category].push({ test, result, message });
+
+            const resultDiv = document.getElementById(`${category}-results`);
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-result ${result}`;
+            testDiv.innerHTML = `<strong>${test}:</strong> ${message}`;
+            resultDiv.appendChild(testDiv);
+        }
+
+        function clearResults(category) {
+            const resultDiv = document.getElementById(`${category}-results`);
+            if (resultDiv) resultDiv.innerHTML = '';
+        }
+
+        async function testSystemInitialization() {
+            clearResults('init');
+
+            try {
+                // Initialize core systems
+                eventManager = new EventManager();
+                logTest('init', 'EventManager Creation', 'success', 'EventManager created successfully');
+
+                gameState = new GameState();
+                gameState.setEventManager(eventManager);
+                logTest('init', 'GameState Creation', 'success', 'GameState created and linked to EventManager');
+
+                // Test sect data loading
+                if (typeof SECT_ROLES !== 'undefined') {
+                    logTest('init', 'Sect Data Loading', 'success', `Loaded ${Object.keys(SECT_ROLES).length} sect roles`);
+                } else {
+                    logTest('init', 'Sect Data Loading', 'error', 'SECT_ROLES not found');
+                }
+
+                if (typeof SECT_TYPES !== 'undefined') {
+                    logTest('init', 'Sect Types Loading', 'success', `Loaded ${Object.keys(SECT_TYPES).length} sect types`);
+                } else {
+                    logTest('init', 'Sect Types Loading', 'error', 'SECT_TYPES not found');
+                }
+
+                // Initialize sect systems
+                sectSystem = new SectSystem(gameState, eventManager, window.saveManager);
+                await sectSystem.initialize();
+                logTest('init', 'SectSystem Init', 'success', 'SectSystem initialized successfully');
+
+                sectManager = new SectManager(gameState, eventManager, sectSystem);
+                await sectManager.initialize();
+                logTest('init', 'SectManager Init', 'success', 'SectManager initialized successfully');
+
+                sectActivities = new SectActivities(gameState, eventManager, sectSystem, sectManager);
+                await sectActivities.initialize();
+                logTest('init', 'SectActivities Init', 'success', 'SectActivities initialized successfully');
+
+                sectCompetition = new SectCompetition(gameState, eventManager, sectSystem, sectManager);
+                await sectCompetition.initialize();
+                logTest('init', 'SectCompetition Init', 'success', 'SectCompetition initialized successfully');
+
+                sectIntegration = new SectIntegration();
+                await sectIntegration.initialize({
+                    gameState: gameState,
+                    eventManager: eventManager,
+                    saveManager: window.saveManager,
+                    sectSystem: sectSystem,
+                    sectManager: sectManager,
+                    sectActivities: sectActivities,
+                    sectCompetition: sectCompetition,
+                    cultivationSystem: null,
+                    enhancementSystem: null,
+                    scriptureSystem: null
+                });
+                logTest('init', 'SectIntegration Init', 'success', 'SectIntegration initialized successfully');
+
+            } catch (error) {
+                logTest('init', 'System Initialization', 'error', `Error: ${error.message}`);
+                console.error('Initialization error:', error);
+            }
+        }
+
+        async function testSectCreation() {
+            clearResults('creation');
+
+            try {
+                if (!sectSystem) {
+                    logTest('creation', 'Prerequisites', 'error', 'Systems not initialized. Run initialization test first.');
+                    return;
+                }
+
+                // Test sect creation
+                const sectConfig = {
+                    name: 'Test Heavenly Sect',
+                    description: 'A test sect for the cultivation of testing arts',
+                    type: 'orthodox',
+                    emblem: '⚡',
+                    policies: {
+                        recruitment: 'open'
+                    }
+                };
+
+                const creationResult = await sectSystem.createSect(sectConfig);
+
+                if (creationResult.success) {
+                    logTest('creation', 'Sect Creation', 'success', `Created sect: ${creationResult.sect.name}`);
+
+                    // Test getting current sect
+                    const currentSect = sectSystem.getCurrentSect();
+                    if (currentSect) {
+                        logTest('creation', 'Get Current Sect', 'success', `Retrieved sect: ${currentSect.name}`);
+                        logTest('creation', 'Player Role', 'info', `Player role: ${currentSect.playerRole}`);
+                        logTest('creation', 'Member Count', 'info', `Members: ${currentSect.memberCount}/${currentSect.maxMembers}`);
+                    } else {
+                        logTest('creation', 'Get Current Sect', 'error', 'Failed to retrieve created sect');
+                    }
+
+                    // Test sect data persistence
+                    const sectData = gameState.get('sect');
+                    if (sectData && sectData.id) {
+                        logTest('creation', 'Data Persistence', 'success', 'Sect data saved to game state');
+                    } else {
+                        logTest('creation', 'Data Persistence', 'error', 'Sect data not found in game state');
+                    }
+
+                } else {
+                    logTest('creation', 'Sect Creation', 'error', `Failed: ${creationResult.error}`);
+                }
+
+            } catch (error) {
+                logTest('creation', 'Sect Creation Test', 'error', `Error: ${error.message}`);
+                console.error('Sect creation error:', error);
+            }
+        }
+
+        async function testSectActivities() {
+            clearResults('activities');
+
+            try {
+                if (!sectActivities || !sectSystem.getCurrentSect()) {
+                    logTest('activities', 'Prerequisites', 'error', 'Systems not initialized or no sect created. Run previous tests first.');
+                    return;
+                }
+
+                // Test getting available activities
+                const availableActivities = sectActivities.getAvailableActivities();
+                logTest('activities', 'Available Activities', 'success', `Found ${availableActivities.length} available activities`);
+
+                if (availableActivities.length > 0) {
+                    const activity = availableActivities[0];
+                    logTest('activities', 'First Activity', 'info', `${activity.name}: ${activity.description}`);
+
+                    // Test starting an activity
+                    if (activity.available) {
+                        const startResult = await sectActivities.startActivity(activity.id);
+                        if (startResult.success) {
+                            logTest('activities', 'Start Activity', 'success', `Started: ${startResult.message}`);
+
+                            // Test getting active activities
+                            const activeActivities = sectActivities.getActiveActivities();
+                            logTest('activities', 'Active Activities', 'success', `Found ${activeActivities.length} active activities`);
+
+                        } else {
+                            logTest('activities', 'Start Activity', 'error', `Failed: ${startResult.error}`);
+                        }
+                    } else {
+                        logTest('activities', 'Activity Availability', 'info', 'First activity not available (expected for resource requirements)');
+                    }
+                }
+
+            } catch (error) {
+                logTest('activities', 'Activities Test', 'error', `Error: ${error.message}`);
+                console.error('Activities error:', error);
+            }
+        }
+
+        async function testIntegration() {
+            clearResults('integration');
+
+            try {
+                if (!sectIntegration) {
+                    logTest('integration', 'Prerequisites', 'error', 'Integration system not initialized. Run initialization test first.');
+                    return;
+                }
+
+                // Test bonus calculation
+                const bonuses = sectIntegration.calculateSectBonuses();
+                logTest('integration', 'Bonus Calculation', 'success', 'Calculated sect bonuses');
+                logTest('integration', 'Cultivation Bonuses', 'info', `Cultivation bonuses: ${Object.keys(bonuses.cultivation).length} types`);
+                logTest('integration', 'Resource Bonuses', 'info', `Resource bonuses: ${Object.keys(bonuses.resources).length} types`);
+
+                // Test sync with game state
+                sectIntegration.syncSectData();
+                const sectData = gameState.get('sect');
+                if (sectData) {
+                    logTest('integration', 'Data Sync', 'success', 'Sect data synced to game state');
+                    logTest('integration', 'Synced Data', 'info', `Sect: ${sectData.name || 'None'}, Role: ${sectData.role || 'None'}`);
+                } else {
+                    logTest('integration', 'Data Sync', 'error', 'Failed to sync sect data');
+                }
+
+                // Test event handling
+                let eventReceived = false;
+                eventManager.once('test:event', () => {
+                    eventReceived = true;
+                });
+
+                eventManager.emit('test:event', { test: true });
+
+                if (eventReceived) {
+                    logTest('integration', 'Event System', 'success', 'Event system working correctly');
+                } else {
+                    logTest('integration', 'Event System', 'error', 'Event system not working');
+                }
+
+            } catch (error) {
+                logTest('integration', 'Integration Test', 'error', `Error: ${error.message}`);
+                console.error('Integration error:', error);
+            }
+        }
+
+        async function runAllTests() {
+            clearResults('all');
+
+            try {
+                logTest('all', 'Starting Tests', 'info', 'Running comprehensive test suite...');
+
+                await testSystemInitialization();
+                await testSectCreation();
+                await testSectActivities();
+                await testIntegration();
+
+                // Calculate results
+                let totalTests = 0;
+                let passedTests = 0;
+                let failedTests = 0;
+
+                for (const category in testResults) {
+                    for (const test of testResults[category]) {
+                        totalTests++;
+                        if (test.result === 'success') passedTests++;
+                        if (test.result === 'error') failedTests++;
+                    }
+                }
+
+                logTest('all', 'Test Summary', 'info', `Total: ${totalTests}, Passed: ${passedTests}, Failed: ${failedTests}`);
+
+                if (failedTests === 0) {
+                    logTest('all', 'Overall Result', 'success', '🎉 All tests passed! Sect system is working correctly.');
+                } else {
+                    logTest('all', 'Overall Result', 'error', `❌ ${failedTests} tests failed. Check individual test results.`);
+                }
+
+            } catch (error) {
+                logTest('all', 'Test Suite', 'error', `Error: ${error.message}`);
+                console.error('Test suite error:', error);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('🏔️ Sect System Test Suite Ready');
+            console.log('Click the test buttons to verify sect system functionality');
+        });
+    </script>
+</body>
+</html>
