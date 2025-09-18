@@ -1,0 +1,20 @@
+{
+  "name": "idle-cultivation-game",
+  "version": "1.0.0",
+  "description": "A complete idle/incremental RPG set in a wuxia/xianxia world where players cultivate Qi and Body, craft unique builds through Scripture collection, and collaborate in Sects. Features continuous progression without full resets and rotating seasonal content.",
+  "main": "game.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/collrest-a11y/idle-cultivation-game.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/collrest-a11y/idle-cultivation-game/issues"
+  },
+  "homepage": "https://github.com/collrest-a11y/idle-cultivation-game#readme"
+}

@@ -88,3 +88,7 @@ temp/
 
 # Old CSS (keeping the new GFL styles)
 styles.css
+# Claude Code PM
+.claude/context/
+.claude/epics/*.tmp
+.claude/prds/*.tmp
