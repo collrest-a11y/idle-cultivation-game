@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Cultivation - Ashes on the Wind</title>
+    <link rel="stylesheet" href="styles-gfl.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Character Creation Modal -->
+        <div id="character-creation" class="modal">
+            <div class="modal-content">
+                <h2>Memory Fragments</h2>
+                <p class="prologue-text">The lantern flickers with your memories. Choose what shaped you...</p>
+
+                <div class="fragment-section">
+                    <h3>Origin</h3>
+                    <div class="fragment-choices" data-category="origin">
+                        <button class="fragment-choice" data-choice="dust-road">
+                            <h4>Dust Road Orphan</h4>
+                            <p>You learned to fight hungry</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="ink-pavilion">
+                            <h4>Ink Pavilion Disciple</h4>
+                            <p>Study made your will a blade</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="exiled-heir">
+                            <h4>Exiled Heir</h4>
+                            <p>You lost everything except your name</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="hermit">
+                            <h4>Hermit of the North Ridge</h4>
+                            <p>Storms taught you to listen first</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fragment-section">
+                    <h3>Vow</h3>
+                    <div class="fragment-choices" data-category="vow">
+                        <button class="fragment-choice" data-choice="protect">
+                            <h4>Protect the Small</h4>
+                            <p>Guard breaks don't shake you</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="pursue">
+                            <h4>Pursue the Hidden Law</h4>
+                            <p>Truth has a sound</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="break">
+                            <h4>Break the Chain</h4>
+                            <p>Shackles are just metal</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="settle">
+                            <h4>Settle a Debt</h4>
+                            <p>You keep receipts</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fragment-section">
+                    <h3>Mark of Fate</h3>
+                    <div class="fragment-choices" data-category="mark">
+                        <button class="fragment-choice" data-choice="thunder">
+                            <h4>Thunder Whisper (Qi)</h4>
+                            <p>First strike bites</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="frost">
+                            <h4>Frostbrand Scar (Body)</h4>
+                            <p>Cold makes clean cuts</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="twin">
+                            <h4>Twin-Pulse Sigil (Dual)</h4>
+                            <p>Two rhythms, one body</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="hollow">
+                            <h4>Hollow Gourd (Utility)</h4>
+                            <p>You carry what others spill</p>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="begin-cultivation" class="btn-primary" disabled>Begin Cultivation</button>
+            </div>
+        </div>
+
+        <!-- Main Game Interface -->
+        <div id="game-interface" class="hidden">
+            <!-- Header -->
+            <header class="game-header">
+                <div class="resources">
+                    <div class="resource">
+                        <div class="resource-icon">💎</div>
+                        <div class="resource-value" id="jade-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">🔮</div>
+                        <div class="resource-value" id="spirit-crystal-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">⭐</div>
+                        <div class="resource-value" id="shard-count">0</div>
+                    </div>
+                </div>
+                <div class="realm-info">
+                    <span id="current-realm">Body Refinement 1</span>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="game-content">
+                <!-- Cultivation Tab -->
+                <div id="cultivation-tab" class="tab-content active">
+                    <div class="cultivation-paths">
+                        <div class="path qi-path card">
+                            <div class="card-header">
+                                <h3 class="card-title">Qi Cultivation</h3>
+                                <div class="stat-value" id="qi-level">Level 0</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="qi-progress"></div>
+                            </div>
+                            <div class="path-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">Progress</div>
+                                    <div class="stat-value" id="qi-progress-text">0/100</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Per Second</div>
+                                    <div class="stat-value" id="qi-per-second">1.0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="path body-path card">
+                            <div class="card-header">
+                                <h3 class="card-title">Body Cultivation</h3>
+                                <div class="stat-value" id="body-level">Level 0</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="body-progress"></div>
+                            </div>
+                            <div class="path-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">Progress</div>
+                                    <div class="stat-value" id="body-progress-text">0/100</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Per Second</div>
+                                    <div class="stat-value" id="body-per-second">1.0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="path dual-path card locked" id="dual-path">
+                            <div class="card-header">
+                                <h3 class="card-title">Dual Cultivation</h3>
+                            </div>
+                            <div class="unlock-requirement text-center text-muted">
+                                <p>Unlocks at Foundation Realm</p>
+                                <p>Master both Qi and Body paths to unlock synergy</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cultivation-actions">
+                        <button id="meditate-btn" class="btn btn-secondary">
+                            <span>⚡</span> Meditate (2x speed for 5 min)
+                        </button>
+                        <button id="breakthrough-btn" class="btn btn-primary" disabled>
+                            <span>🔥</span> Breakthrough
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loadout Tab -->
+                <div id="loadout-tab" class="tab-content">
+                    <div class="loadout-container">
+                        <div class="equipment-section card">
+                            <div class="card-header">
+                                <h3 class="card-title">Scripture Loadout</h3>
+                                <button class="btn btn-secondary btn-small">Auto-Optimize</button>
+                            </div>
+                            <div class="equipment-grid">
+                                <div class="slot qi-slot card" data-slot="qi">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">⚡</div>
+                                        <div class="slot-title">Qi Scripture</div>
+                                    </div>
+                                    <div class="slot-content" id="qi-slot">
+                                        <div class="empty-slot">Drop scripture here</div>
+                                    </div>
+                                </div>
+                                <div class="slot body-slot card" data-slot="body">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">💪</div>
+                                        <div class="slot-title">Body Scripture</div>
+                                    </div>
+                                    <div class="slot-content" id="body-slot">
+                                        <div class="empty-slot">Drop scripture here</div>
+                                    </div>
+                                </div>
+                                <div class="slot dual-slot card locked" data-slot="dual">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">🔗</div>
+                                        <div class="slot-title">Dual Scripture</div>
+                                    </div>
+                                    <div class="slot-content">
+                                        <div class="locked-slot">Foundation Realm Required</div>
+                                    </div>
+                                </div>
+                                <div class="slot extra-slot card" data-slot="extra1">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">✨</div>
+                                        <div class="slot-title">Extra Slot 1</div>
+                                    </div>
+                                    <div class="slot-content">
+                                        <div class="empty-slot">Any scripture type</div>
+                                    </div>
+                                </div>
+                                <div class="slot extra-slot card" data-slot="extra2">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">✨</div>
+                                        <div class="slot-title">Extra Slot 2</div>
+                                    </div>
+                                    <div class="slot-content">
+                                        <div class="empty-slot">Any scripture type</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-panel card">
+                            <div class="card-header">
+                                <h3 class="card-title">Combat Statistics</h3>
+                                <div class="power-rating">
+                                    <span class="stat-label">Total Power</span>
+                                    <span class="stat-value" id="total-dps">1.0</span>
+                                </div>
+                            </div>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">Flat Damage</div>
+                                    <div class="stat-value" id="flat-damage">0</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Damage Mult</div>
+                                    <div class="stat-value" id="damage-mult">1.0x</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Attack Speed</div>
+                                    <div class="stat-value" id="attack-speed">1.0</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Critical Rate</div>
+                                    <div class="stat-value" id="crit-chance">5%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scriptures Tab -->
+                <div id="scriptures-tab" class="tab-content">
+                    <div class="gacha-section">
+                        <div class="banner-selection">
+                            <button class="banner-btn active" data-banner="standard">Standard Banner</button>
+                            <button class="banner-btn" data-banner="focused">Focused Banner</button>
+                            <button class="banner-btn" data-banner="event">Event Banner</button>
+                        </div>
+
+                        <div class="pull-section">
+                            <div class="pity-counter">
+                                Pity: <span id="pity-counter">0</span>/80
+                            </div>
+                            <div class="pull-buttons">
+                                <button id="single-pull" class="btn-secondary">Single Pull (100 💎)</button>
+                                <button id="ten-pull" class="btn-primary">10-Pull (1000 💎)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scripture-inventory">
+                        <h3>Scripture Collection</h3>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="qi">Qi</button>
+                            <button class="filter-btn" data-filter="body">Body</button>
+                            <button class="filter-btn" data-filter="dual">Dual</button>
+                            <button class="filter-btn" data-filter="utility">Utility</button>
+                        </div>
+                        <div id="scripture-grid" class="scripture-grid"></div>
+                    </div>
+                <!-- Combat Tab -->
+                <div id="combat-tab" class="tab-content">
+                    <div class="combat-interface">
+                        <div class="combat-status">
+                            <h3>Combat Record</h3>
+                            <div class="combat-stats">
+                                <div class="stat-item">
+                                    <span>Wins:</span>
+                                    <span id="combat-wins">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span>Losses:</span>
+                                    <span id="combat-losses">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span>Win Streak:</span>
+                                    <span id="combat-streak">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span>Rank:</span>
+                                    <span id="combat-rank">1000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="combat-actions">
+                            <h3>Arena Duels</h3>
+                            <p>Challenge other cultivators in asynchronous combat!</p>
+                            <div class="duel-options">
+                                <button id="find-opponent" class="btn-primary">Find Opponent</button>
+                                <button id="practice-duel" class="btn-secondary">Practice Duel</button>
+                                <button id="ranked-duel" class="btn-secondary">Ranked Match</button>
+                            </div>
+                            <div id="duel-queue" class="duel-queue">
+                                <p>No active duels</p>
+                            </div>
+                        </div>
+
+                        <div class="combat-simulation">
+                            <h3>Last Combat</h3>
+                            <div id="combat-log" class="combat-log">
+                                <p>No recent combat history</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sect Tab -->
+                <div id="sect-tab" class="tab-content">
+                    <div class="sect-interface">
+                        <div class="sect-status" id="sect-status">
+                            <div class="no-sect">
+                                <h3>No Sect</h3>
+                                <p>Join a sect to collaborate with other cultivators and unlock powerful buffs!</p>
+                                <div class="sect-actions">
+                                    <button id="find-sect" class="btn-primary">Find Sect</button>
+                                    <button id="create-sect" class="btn-secondary">Create Sect</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sect-details hidden" id="sect-details">
+                            <div class="sect-header">
+                                <h3 id="sect-name">Sect Name</h3>
+                                <div class="sect-info">
+                                    <span>Members: <span id="sect-members">0/50</span></span>
+                                    <span>Your Contribution: <span id="sect-contribution">0</span></span>
+                                </div>
+                            </div>
+
+                            <div class="sect-buffs">
+                                <h4>Active Buffs</h4>
+                                <div id="sect-buff-list" class="buff-list">
+                                    <p>No active buffs</p>
+                                </div>
+                            </div>
+
+                            <div class="sect-rituals">
+                                <h4>Sect Rituals</h4>
+                                <div id="sect-ritual-list" class="ritual-list">
+                                    <!-- Rituals will be populated here -->
+                                </div>
+                            </div>
+
+                            <div class="sect-market">
+                                <h4>Sect Market</h4>
+                                <div id="sect-market-items" class="market-items">
+                                    <!-- Market items will be populated here -->
+                                </div>
+                            </div>
+
+                            <div class="sect-actions">
+                                <button id="donate-crystals" class="btn-secondary">Donate Spirit Crystals</button>
+                                <button id="leave-sect" class="btn-danger">Leave Sect</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav">
+                <button class="nav-btn active" data-tab="cultivation">Cultivate</button>
+                <button class="nav-btn" data-tab="loadout">Loadout</button>
+                <button class="nav-btn" data-tab="scriptures">Scriptures</button>
+                <button class="nav-btn" data-tab="combat">Combat</button>
+                <button class="nav-btn" data-tab="sect">Sect</button>
+            </nav>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
