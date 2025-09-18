@@ -380,6 +380,70 @@ class IdleCultivationGame {
             priority: 70
         });
 
+        // Sect Module - handles sect system mechanics
+        this.moduleManager.registerModule('sect', {
+            factory: async (context) => {
+                return {
+                    name: 'Sect Module',
+                    sectSystem: null,
+                    sectManager: null,
+                    sectActivities: null,
+                    sectCompetition: null,
+                    sectIntegration: null,
+                    init: async () => {
+                        console.log('Sect Module initializing...');
+
+                        // Initialize sect system components
+                        this.sectSystem = new SectSystem(context.gameState, context.eventManager, window.saveManager);
+                        this.sectManager = new SectManager(context.gameState, context.eventManager, this.sectSystem);
+                        this.sectActivities = new SectActivities(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
+                        this.sectCompetition = new SectCompetition(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
+
+                        // Initialize integration last
+                        this.sectIntegration = new SectIntegration();
+
+                        // Get other system references for integration
+                        const cultivationModule = context.moduleManager?.getModule('cultivation');
+                        const cultivationSystem = cultivationModule?.cultivationIntegration;
+
+                        await this.sectIntegration.initialize({
+                            gameState: context.gameState,
+                            eventManager: context.eventManager,
+                            saveManager: window.saveManager,
+                            sectSystem: this.sectSystem,
+                            sectManager: this.sectManager,
+                            sectActivities: this.sectActivities,
+                            sectCompetition: this.sectCompetition,
+                            cultivationSystem: cultivationSystem,
+                            enhancementSystem: null, // Will be added when enhancement system exists
+                            scriptureSystem: null // Will be added when scripture system exists
+                        });
+
+                        // Initialize individual components
+                        await this.sectSystem.initialize();
+                        await this.sectManager.initialize();
+                        await this.sectActivities.initialize();
+                        await this.sectCompetition.initialize();
+
+                        console.log('Sect Module initialized');
+                    },
+                    update: (deltaTime) => {
+                        // Update sect systems
+                        if (this.sectSystem) this.sectSystem.update(deltaTime);
+                        if (this.sectActivities) this.sectActivities.update(deltaTime);
+                        if (this.sectCompetition) this.sectCompetition.update(deltaTime);
+                        if (this.sectIntegration) this.sectIntegration.update(deltaTime);
+                    },
+                    shutdown: () => {
+                        // Cleanup sect systems if needed
+                        console.log('Sect Module shutting down');
+                    }
+                };
+            },
+            dependencies: ['cultivation'],
+            priority: 65
+        });
+
         // Save Module - handles auto-saving
         this.moduleManager.registerModule('save', {
             factory: async (context) => {
@@ -406,6 +470,7 @@ class IdleCultivationGame {
         const cultivationModule = this.moduleManager.getModule('cultivation');
         const combatModule = this.moduleManager.getModule('combat');
         const gachaModule = this.moduleManager.getModule('gacha');
+        const sectModule = this.moduleManager.getModule('sect');
         const saveModule = this.moduleManager.getModule('save');
 
         // Register UI systems (run at 60fps)
@@ -422,6 +487,9 @@ class IdleCultivationGame {
         }
         if (gachaModule) {
             this.gameLoop.registerGameSystem(gachaModule);
+        }
+        if (sectModule) {
+            this.gameLoop.registerGameSystem(sectModule);
         }
 
         // Register save systems
