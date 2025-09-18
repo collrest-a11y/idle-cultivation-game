@@ -317,12 +317,26 @@ class IdleCultivationGame {
             factory: async (context) => {
                 return {
                     name: 'Cultivation Module',
+                    cultivationIntegration: null,
                     init: async () => {
+                        console.log('Cultivation Module initializing...');
+
+                        // Get the cultivation integration instance
+                        this.cultivationIntegration = getCultivationIntegration();
+
+                        // Initialize the cultivation system
+                        await this.cultivationIntegration.initialize(context.gameState, context.eventManager);
+
                         console.log('Cultivation Module initialized');
-                        // Initialize cultivation systems
                     },
                     update: (deltaTime) => {
-                        // Update cultivation progress
+                        // Cultivation system updates itself via integration
+                        // This space could be used for additional cultivation-related updates
+                    },
+                    shutdown: () => {
+                        if (this.cultivationIntegration) {
+                            this.cultivationIntegration.shutdown();
+                        }
                     }
                 };
             },
