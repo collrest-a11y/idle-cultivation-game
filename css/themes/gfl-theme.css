@@ -1,0 +1,612 @@
+/**
+ * Girls' Frontline Theme System
+ * Enhanced theming with military-inspired UI elements and sci-fi aesthetics
+ */
+
+/* Theme Variables */
+:root {
+    /* Extended Color Palette */
+    --gfl-primary: #00d4ff;
+    --gfl-primary-dark: #00a8cc;
+    --gfl-primary-light: #33ddff;
+    --gfl-secondary: #4fc3f7;
+    --gfl-secondary-dark: #29b6f6;
+    --gfl-secondary-light: #81d4fa;
+
+    /* Status Colors */
+    --gfl-success: #2ed573;
+    --gfl-success-dark: #27c46b;
+    --gfl-success-light: #55db88;
+    --gfl-warning: #ffa502;
+    --gfl-warning-dark: #ff9500;
+    --gfl-warning-light: #ffb733;
+    --gfl-danger: #ff4757;
+    --gfl-danger-dark: #ff3742;
+    --gfl-danger-light: #ff6b7a;
+    --gfl-info: #70a1ff;
+    --gfl-info-dark: #5352ed;
+    --gfl-info-light: #a4b0ff;
+
+    /* Neutral Grays */
+    --gfl-gray-50: #f8fafc;
+    --gfl-gray-100: #f1f5f9;
+    --gfl-gray-200: #e2e8f0;
+    --gfl-gray-300: #cbd5e1;
+    --gfl-gray-400: #94a3b8;
+    --gfl-gray-500: #64748b;
+    --gfl-gray-600: #475569;
+    --gfl-gray-700: #334155;
+    --gfl-gray-800: #1e293b;
+    --gfl-gray-900: #0f172a;
+
+    /* Dark Theme Backgrounds */
+    --gfl-bg-primary: #0a0e1a;
+    --gfl-bg-secondary: #1a1f2e;
+    --gfl-bg-tertiary: #252d42;
+    --gfl-bg-quaternary: #2d3748;
+    --gfl-bg-elevated: #374151;
+
+    /* Surface Colors */
+    --gfl-surface-low: rgba(255, 255, 255, 0.05);
+    --gfl-surface-medium: rgba(255, 255, 255, 0.1);
+    --gfl-surface-high: rgba(255, 255, 255, 0.15);
+
+    /* Text Colors */
+    --gfl-text-primary: #ffffff;
+    --gfl-text-secondary: #b8c5d6;
+    --gfl-text-muted: #6c7b7f;
+    --gfl-text-disabled: #4a5568;
+    --gfl-text-inverse: #1a202c;
+
+    /* Border Colors */
+    --gfl-border-subtle: #2d3748;
+    --gfl-border-default: #4a5568;
+    --gfl-border-strong: #6c7b7f;
+    --gfl-border-accent: var(--gfl-primary);
+
+    /* Military-inspired Gradients */
+    --gfl-gradient-primary: linear-gradient(135deg, var(--gfl-primary) 0%, var(--gfl-secondary) 100%);
+    --gfl-gradient-secondary: linear-gradient(135deg, var(--gfl-bg-secondary) 0%, var(--gfl-bg-tertiary) 100%);
+    --gfl-gradient-success: linear-gradient(135deg, var(--gfl-success) 0%, var(--gfl-success-dark) 100%);
+    --gfl-gradient-warning: linear-gradient(135deg, var(--gfl-warning) 0%, var(--gfl-warning-dark) 100%);
+    --gfl-gradient-danger: linear-gradient(135deg, var(--gfl-danger) 0%, var(--gfl-danger-dark) 100%);
+    --gfl-gradient-tactical: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gfl-gradient-holographic: linear-gradient(45deg, #ff6b35 0%, #f7931e 25%, #00d4ff 50%, #4fc3f7 75%, #ff6b35 100%);
+
+    /* Enhanced Shadows */
+    --gfl-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --gfl-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --gfl-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --gfl-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+    --gfl-shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+    --gfl-shadow-glow: 0 0 20px rgba(0, 212, 255, 0.3);
+    --gfl-shadow-tactical: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --gfl-shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    /* Animation Timing */
+    --gfl-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --gfl-transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --gfl-transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    --gfl-transition-bounce: 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* Military UI Elements */
+    --gfl-border-radius-sm: 4px;
+    --gfl-border-radius-md: 6px;
+    --gfl-border-radius-lg: 8px;
+    --gfl-border-radius-xl: 12px;
+    --gfl-border-radius-tactical: 2px;
+
+    /* Holographic Effects */
+    --gfl-hologram-1: rgba(0, 212, 255, 0.1);
+    --gfl-hologram-2: rgba(79, 195, 247, 0.1);
+    --gfl-hologram-3: rgba(0, 212, 255, 0.05);
+}
+
+/* Light Theme Overrides */
+[data-theme="gfl-light"] {
+    --gfl-bg-primary: #f8fafc;
+    --gfl-bg-secondary: #edf2f7;
+    --gfl-bg-tertiary: #e2e8f0;
+    --gfl-bg-quaternary: #cbd5e1;
+    --gfl-bg-elevated: #ffffff;
+
+    --gfl-text-primary: #1a202c;
+    --gfl-text-secondary: #4a5568;
+    --gfl-text-muted: #718096;
+    --gfl-text-disabled: #a0aec0;
+    --gfl-text-inverse: #ffffff;
+
+    --gfl-border-subtle: #e2e8f0;
+    --gfl-border-default: #cbd5e1;
+    --gfl-border-strong: #a0aec0;
+
+    --gfl-surface-low: rgba(0, 0, 0, 0.02);
+    --gfl-surface-medium: rgba(0, 0, 0, 0.05);
+    --gfl-surface-high: rgba(0, 0, 0, 0.1);
+
+    --gfl-shadow-glow: 0 0 20px rgba(0, 132, 200, 0.2);
+}
+
+/* High Contrast Mode */
+.high-contrast {
+    --gfl-primary: #ffffff;
+    --gfl-bg-primary: #000000;
+    --gfl-bg-secondary: #1a1a1a;
+    --gfl-bg-tertiary: #333333;
+    --gfl-text-primary: #ffffff;
+    --gfl-text-secondary: #cccccc;
+    --gfl-border-default: #666666;
+}
+
+/* Reduced Motion Support */
+.reduced-motion {
+    --gfl-transition-fast: 0s;
+    --gfl-transition-normal: 0s;
+    --gfl-transition-slow: 0s;
+    --gfl-transition-bounce: 0s;
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+}
+
+/* Tactical UI Elements */
+.tactical-border {
+    position: relative;
+    border: 1px solid var(--gfl-border-accent);
+}
+
+.tactical-border::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: var(--gfl-gradient-primary);
+    border-radius: var(--gfl-border-radius-tactical);
+    z-index: -1;
+    opacity: 0.5;
+}
+
+.tactical-corner {
+    position: relative;
+}
+
+.tactical-corner::before,
+.tactical-corner::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--gfl-primary);
+}
+
+.tactical-corner::before {
+    top: -1px;
+    left: -1px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.tactical-corner::after {
+    bottom: -1px;
+    right: -1px;
+    border-left: none;
+    border-top: none;
+}
+
+/* Holographic Effects */
+.holographic {
+    background: var(--gfl-gradient-holographic);
+    background-size: 400% 400%;
+    animation: holographicShift 3s ease infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+@keyframes holographicShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.holographic-bg {
+    background: var(--gfl-gradient-holographic);
+    background-size: 400% 400%;
+    animation: holographicShift 3s ease infinite;
+}
+
+/* Glitch Effects */
+.glitch {
+    position: relative;
+    display: inline-block;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glitch::before {
+    animation: glitch-1 0.5s infinite;
+    color: var(--gfl-danger);
+    z-index: -1;
+}
+
+.glitch::after {
+    animation: glitch-2 0.5s infinite;
+    color: var(--gfl-primary);
+    z-index: -2;
+}
+
+@keyframes glitch-1 {
+    0%, 14%, 15%, 49%, 50%, 99%, 100% { transform: translate(0); }
+    15%, 49% { transform: translate(-2px, 1px); }
+}
+
+@keyframes glitch-2 {
+    0%, 20%, 21%, 62%, 63%, 99%, 100% { transform: translate(0); }
+    21%, 62% { transform: translate(2px, -1px); }
+}
+
+/* Scan Lines Effect */
+.scanlines {
+    position: relative;
+    overflow: hidden;
+}
+
+.scanlines::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 212, 255, 0.03) 2px,
+        rgba(0, 212, 255, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* HUD Elements */
+.hud-element {
+    position: relative;
+    background: var(--gfl-bg-secondary);
+    border: 1px solid var(--gfl-border-accent);
+    padding: var(--spacing-md);
+    border-radius: var(--gfl-border-radius-tactical);
+}
+
+.hud-element::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 4px;
+    height: 4px;
+    background: var(--gfl-primary);
+    box-shadow:
+        0 0 4px var(--gfl-primary),
+        12px 0 0 var(--gfl-primary),
+        12px 0 4px var(--gfl-primary);
+}
+
+.hud-element::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 16px;
+    height: 1px;
+    background: var(--gfl-primary);
+    box-shadow:
+        0 0 2px var(--gfl-primary),
+        0 -6px 0 var(--gfl-primary),
+        0 -6px 2px var(--gfl-primary);
+}
+
+/* Data Display Elements */
+.data-readout {
+    font-family: 'Orbitron', monospace;
+    background: var(--gfl-bg-tertiary);
+    border: 1px solid var(--gfl-border-default);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--gfl-border-radius-sm);
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+    color: var(--gfl-primary);
+    text-shadow: 0 0 4px currentColor;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: var(--spacing-xs);
+}
+
+.status-indicator.online {
+    background: var(--gfl-success);
+    box-shadow: 0 0 8px var(--gfl-success);
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.offline {
+    background: var(--gfl-danger);
+    opacity: 0.5;
+}
+
+.status-indicator.warning {
+    background: var(--gfl-warning);
+    box-shadow: 0 0 8px var(--gfl-warning);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Enhanced Typography */
+.text-tactical {
+    font-family: 'Orbitron', monospace;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.text-glow {
+    text-shadow: 0 0 8px currentColor;
+}
+
+.text-primary-glow {
+    color: var(--gfl-primary);
+    text-shadow: 0 0 8px var(--gfl-primary);
+}
+
+.text-success-glow {
+    color: var(--gfl-success);
+    text-shadow: 0 0 8px var(--gfl-success);
+}
+
+.text-warning-glow {
+    color: var(--gfl-warning);
+    text-shadow: 0 0 8px var(--gfl-warning);
+}
+
+.text-danger-glow {
+    color: var(--gfl-danger);
+    text-shadow: 0 0 8px var(--gfl-danger);
+}
+
+/* Energy Bars and Progress */
+.energy-bar {
+    background: var(--gfl-bg-tertiary);
+    border: 1px solid var(--gfl-border-default);
+    border-radius: var(--gfl-border-radius-sm);
+    overflow: hidden;
+    position: relative;
+}
+
+.energy-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 8px,
+        rgba(0, 212, 255, 0.1) 8px,
+        rgba(0, 212, 255, 0.1) 16px
+    );
+    pointer-events: none;
+}
+
+.energy-fill {
+    height: 100%;
+    background: var(--gfl-gradient-primary);
+    border-radius: var(--gfl-border-radius-sm);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 8px var(--gfl-primary);
+    transition: width var(--gfl-transition-normal);
+}
+
+/* Alert System */
+.alert-tactical {
+    background: var(--gfl-bg-secondary);
+    border: 1px solid var(--gfl-border-default);
+    border-left: 4px solid var(--gfl-primary);
+    border-radius: var(--gfl-border-radius-md);
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+    position: relative;
+}
+
+.alert-tactical.alert-warning {
+    border-left-color: var(--gfl-warning);
+    background: rgba(255, 165, 2, 0.1);
+}
+
+.alert-tactical.alert-danger {
+    border-left-color: var(--gfl-danger);
+    background: rgba(255, 71, 87, 0.1);
+}
+
+.alert-tactical.alert-success {
+    border-left-color: var(--gfl-success);
+    background: rgba(46, 213, 115, 0.1);
+}
+
+/* Command Interface */
+.command-interface {
+    background: var(--gfl-bg-secondary);
+    border: 2px solid var(--gfl-border-accent);
+    border-radius: var(--gfl-border-radius-lg);
+    padding: var(--spacing-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.command-interface::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gfl-gradient-primary);
+    animation: scanning 2s linear infinite;
+}
+
+@keyframes scanning {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Matrix Rain Effect */
+.matrix-bg {
+    position: relative;
+    overflow: hidden;
+}
+
+.matrix-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        linear-gradient(transparent 0%, var(--gfl-primary) 50%, transparent 100%),
+        linear-gradient(90deg, transparent 0%, var(--gfl-primary) 50%, transparent 100%);
+    background-size: 2px 20px, 20px 2px;
+    background-repeat: repeat;
+    opacity: 0.1;
+    animation: matrixRain 1s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes matrixRain {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 20px, 20px 0; }
+}
+
+/* Weapon System Indicators */
+.weapon-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    color: var(--gfl-text-secondary);
+}
+
+.weapon-status .weapon-icon {
+    width: 16px;
+    height: 16px;
+    background: var(--gfl-primary);
+    mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2L2 7V10C2 16 6 20.9 12 22C18 20.9 22 16 22 10V7L12 2Z"/></svg>');
+    mask-size: contain;
+}
+
+.weapon-status.armed .weapon-icon {
+    background: var(--gfl-success);
+    animation: pulse 1s infinite;
+}
+
+.weapon-status.disabled .weapon-icon {
+    background: var(--gfl-danger);
+    opacity: 0.5;
+}
+
+/* Tactical Grid Overlay */
+.tactical-grid {
+    background-image:
+        linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    position: relative;
+}
+
+.tactical-grid::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+        circle at center,
+        rgba(0, 212, 255, 0.1) 0%,
+        transparent 70%
+    );
+    pointer-events: none;
+}
+
+/* Screen Flicker Effect */
+@keyframes screenFlicker {
+    0%, 100% { opacity: 1; }
+    98% { opacity: 1; }
+    99% { opacity: 0.98; }
+    99.5% { opacity: 1; }
+}
+
+.screen-flicker {
+    animation: screenFlicker 5s infinite;
+}
+
+/* Boot Sequence Animation */
+@keyframes bootSequence {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.boot-animation {
+    animation: bootSequence 1s ease-out;
+}
+
+/* Utility Classes for Theme */
+.bg-tactical { background: var(--gfl-bg-secondary); }
+.bg-hud { background: var(--gfl-bg-tertiary); }
+.bg-surface { background: var(--gfl-surface-medium); }
+
+.border-tactical { border-color: var(--gfl-border-accent); }
+.border-subtle { border-color: var(--gfl-border-subtle); }
+.border-strong { border-color: var(--gfl-border-strong); }
+
+.shadow-tactical { box-shadow: var(--gfl-shadow-tactical); }
+.shadow-glow { box-shadow: var(--gfl-shadow-glow); }
+
+.rounded-tactical { border-radius: var(--gfl-border-radius-tactical); }
+.rounded-hud { border-radius: var(--gfl-border-radius-md); }
