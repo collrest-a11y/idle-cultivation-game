@@ -409,18 +409,29 @@ const CULTIVATION_RESOURCES = {
     }
 };
 
-// Cultivation formulas for progression calculations
+// Cultivation formulas for progression calculations (with balance integration)
 const CULTIVATION_FORMULAS = {
     // Experience required for next level
-    experienceRequired: (currentLevel) => {
+    experienceRequired: (currentLevel, realm = null) => {
         const baseExp = 100;
         const growthRate = 1.15;
         const exponentialFactor = Math.pow(currentLevel, 1.2);
-        return Math.floor(baseExp * Math.pow(growthRate, currentLevel) * exponentialFactor);
+        let requiredExp = Math.floor(baseExp * Math.pow(growthRate, currentLevel) * exponentialFactor);
+
+        // Apply balance modifications if BalanceManager is available
+        if (typeof window !== 'undefined' && window.balanceManager) {
+            requiredExp = window.balanceManager.applyBalance('progression', 'experience', requiredExp, { realm, level: currentLevel });
+        }
+
+        // Apply bottleneck mechanics
+        const bottleneckMultiplier = CULTIVATION_BOTTLENECKS.getBottleneckMultiplier(currentLevel);
+        requiredExp *= bottleneckMultiplier;
+
+        return Math.floor(requiredExp);
     },
 
     // Cultivation speed calculation
-    cultivationSpeed: (baseRate, technique, realm, stage, resources) => {
+    cultivationSpeed: (baseRate, technique, realm, stage, resources = {}) => {
         let speed = baseRate;
 
         // Technique multiplier
@@ -443,6 +454,11 @@ const CULTIVATION_FORMULAS = {
         // Resource efficiency
         if (resources.spiritStones > 0) {
             speed *= (1 + Math.min(resources.spiritStones * 0.01, 2.0)); // Cap at 3x speed
+        }
+
+        // Apply balance modifications if BalanceManager is available
+        if (typeof window !== 'undefined' && window.balanceManager) {
+            speed = window.balanceManager.applyBalance('progression', 'cultivationSpeed', speed, { realm, stage, technique });
         }
 
         return speed;

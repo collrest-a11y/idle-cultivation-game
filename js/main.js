@@ -192,12 +192,21 @@ class IdleCultivationGame {
     handleError(error) {
         console.error('Game Error:', error);
 
-        if (this.eventManager) {
-            this.eventManager.emit('game:error', {
-                error: error.message,
-                stack: error.stack,
-                timestamp: Date.now()
-            });
+        // Use ErrorManager if available
+        if (this.errorManager) {
+            this.errorManager.reportError(error, {
+                source: 'main_game',
+                gameState: this.isInitialized ? 'initialized' : 'initializing'
+            }, 'critical');
+        } else {
+            // Fallback error handling
+            if (this.eventManager) {
+                this.eventManager.emit('game:error', {
+                    error: error.message,
+                    stack: error.stack,
+                    timestamp: Date.now()
+                });
+            }
         }
 
         // In production, might want to send error reports
@@ -217,9 +226,26 @@ class IdleCultivationGame {
             this.eventManager.setDebugMode(true);
         }
 
+        // Initialize ErrorManager early for comprehensive error handling
+        if (typeof ErrorManager !== 'undefined') {
+            this.errorManager = new ErrorManager();
+            this.errorManager.initialize({
+                eventManager: this.eventManager,
+                gameState: null, // Will be set later
+                performanceMonitor: null // Will be set later
+            });
+            window.errorManager = this.errorManager; // Make globally accessible
+            console.log('🛡️ ErrorManager initialized');
+        }
+
         // Initialize GameState
         this.gameState = new GameState();
         this.gameState.setEventManager(this.eventManager);
+
+        // Update ErrorManager with GameState
+        if (this.errorManager) {
+            this.errorManager.gameState = this.gameState;
+        }
 
         // Initialize SaveManager and inject into GameState
         if (typeof window.saveManager !== 'undefined') {
@@ -238,6 +264,30 @@ class IdleCultivationGame {
         // Initialize TimeManager
         this.timeManager = new TimeManager();
         this.timeManager.setEventManager(this.eventManager);
+
+        // Initialize BalanceManager
+        if (typeof BalanceManager !== 'undefined') {
+            this.balanceManager = new BalanceManager();
+            this.balanceManager.initialize({
+                eventManager: this.eventManager,
+                gameState: this.gameState,
+                performanceMonitor: null // Will be set later when GameLoop initializes it
+            });
+            window.balanceManager = this.balanceManager; // Make globally accessible
+            console.log('🔧 BalanceManager initialized');
+        }
+
+        // Initialize AnimationManager
+        if (typeof AnimationManager !== 'undefined') {
+            this.animationManager = new AnimationManager();
+            this.animationManager.initialize({
+                eventManager: this.eventManager,
+                gameState: this.gameState,
+                performanceMonitor: null // Will be set later when GameLoop initializes it
+            });
+            window.animationManager = this.animationManager; // Make globally accessible
+            console.log('🎨 AnimationManager initialized');
+        }
 
         // Handle offline time if returning player
         const lastPlayed = this.gameState.get('meta.lastPlayed');
