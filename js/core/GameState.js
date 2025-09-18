@@ -15,8 +15,32 @@ class GameState {
         this._isDirty = false;
         this._lastSaveTime = 0;
         this._autoSaveInterval = 30000; // 30 seconds
-        this._saveKey = 'idleCultivationGameSave';
+        this._autoSaveEnabled = true;
+        this._saveKey = 'main'; // Key for SaveManager
         this._eventManager = null; // Will be injected
+        this._saveManager = null; // Will be injected
+
+        // Auto-save configuration
+        this._autoSaveConfig = {
+            enabled: true,
+            interval: 30000, // 30 seconds
+            onSignificantEvents: true,
+            maxUnsavedChanges: 100, // Save after this many changes
+            saveOnVisibilityChange: true,
+            saveOnBeforeUnload: true
+        };
+
+        // Auto-save state tracking
+        this._unsavedChanges = 0;
+        this._lastAutoSaveTime = 0;
+        this._autoSaveTimer = null;
+        this._significantEvents = new Set([
+            'realm:breakthrough',
+            'cultivation:levelUp',
+            'gacha:pull',
+            'scripture:acquired',
+            'combat:victory'
+        ]);
 
         // Initialize with default state
         this._state = this._getDefaultState();
@@ -31,6 +55,57 @@ class GameState {
      */
     setEventManager(eventManager) {
         this._eventManager = eventManager;
+    }
+
+    /**
+     * Set the save manager for this game state
+     * @param {SaveManager} saveManager - The save manager instance
+     */
+    setSaveManager(saveManager) {
+        this._saveManager = saveManager;
+        this._initializeAutoSave();
+    }
+
+    /**
+     * Configure auto-save settings
+     * @param {Object} config - Auto-save configuration
+     */
+    configureAutoSave(config) {
+        this._autoSaveConfig = { ...this._autoSaveConfig, ...config };
+
+        // Update interval if changed
+        if (config.interval && this._autoSaveTimer) {
+            this._stopAutoSave();
+            this._startAutoSave();
+        }
+
+        // Update enabled state
+        if (config.hasOwnProperty('enabled')) {
+            if (config.enabled && !this._autoSaveTimer) {
+                this._startAutoSave();
+            } else if (!config.enabled && this._autoSaveTimer) {
+                this._stopAutoSave();
+            }
+        }
+
+        console.log('GameState: Auto-save configuration updated');
+    }
+
+    /**
+     * Get current auto-save configuration
+     * @returns {Object} Auto-save configuration
+     */
+    getAutoSaveConfig() {
+        return { ...this._autoSaveConfig };
+    }
+
+    /**
+     * Force an immediate save
+     * @param {Object} options - Save options
+     * @returns {Promise<boolean>} Success status
+     */
+    async forceSave(options = {}) {
+        return await this.save({ ...options, force: true });
     }
 
     /**
@@ -86,6 +161,7 @@ class GameState {
             // Update state
             this._state = newState;
             this._isDirty = true;
+            this._unsavedChanges++;
 
             // Emit events if requested
             if (config.emit && this._eventManager) {
@@ -100,11 +176,8 @@ class GameState {
                 this._emitPropertyChangeEvents(this._previousState, this._state);
             }
 
-            // Trigger auto-save if enough time has passed
-            const now = Date.now();
-            if (now - this._lastSaveTime > this._autoSaveInterval) {
-                this.save();
-            }
+            // Check auto-save triggers
+            this._checkAutoSaveTriggers(config.source);
 
         } catch (error) {
             // Rollback on error
@@ -183,26 +256,59 @@ class GameState {
     }
 
     /**
-     * Save the game state to localStorage
-     * @returns {boolean} Whether the save was successful
+     * Save the game state using SaveManager
+     * @param {Object} options - Save options
+     * @returns {Promise<boolean>} Whether the save was successful
      */
-    save() {
+    async save(options = {}) {
         try {
+            const config = {
+                validate: true,
+                compress: true,
+                backup: false,
+                force: false,
+                ...options
+            };
+
+            // Check if save is needed (unless forced)
+            if (!config.force && !this._isDirty) {
+                return true; // Nothing to save
+            }
+
             const saveData = {
                 state: this._state,
                 timestamp: Date.now(),
                 version: this._getSaveVersion()
             };
 
-            localStorage.setItem(this._saveKey, JSON.stringify(saveData));
-            this._isDirty = false;
-            this._lastSaveTime = Date.now();
+            let success = false;
 
-            if (this._eventManager) {
-                this._eventManager.emit('gameState:saved', { timestamp: this._lastSaveTime });
+            if (this._saveManager) {
+                // Use new SaveManager
+                success = await this._saveManager.save(this._saveKey, saveData, config);
+            } else {
+                // Fallback to old localStorage method
+                localStorage.setItem(`idleCultivationGameSave_${this._saveKey}`, JSON.stringify(saveData));
+                success = true;
             }
 
-            return true;
+            if (success) {
+                this._isDirty = false;
+                this._unsavedChanges = 0;
+                this._lastSaveTime = Date.now();
+                this._lastAutoSaveTime = Date.now();
+
+                if (this._eventManager) {
+                    this._eventManager.emit('gameState:saved', {
+                        timestamp: this._lastSaveTime,
+                        method: this._saveManager ? 'SaveManager' : 'localStorage',
+                        forced: config.force,
+                        auto: config.auto || false
+                    });
+                }
+            }
+
+            return success;
         } catch (error) {
             console.error('GameState: Failed to save:', error);
             return false;
@@ -210,27 +316,73 @@ class GameState {
     }
 
     /**
-     * Load the game state from localStorage
-     * @returns {boolean} Whether the load was successful
+     * Load the game state using SaveManager
+     * @param {Object} options - Load options
+     * @returns {Promise<boolean>} Whether the load was successful
      */
-    load() {
+    async load(options = {}) {
         try {
-            const savedData = localStorage.getItem(this._saveKey);
-            if (!savedData) {
+            const config = {
+                validate: true,
+                migrate: true,
+                ...options
+            };
+
+            let saveData = null;
+
+            if (this._saveManager) {
+                // Use new SaveManager
+                saveData = await this._saveManager.load(this._saveKey, config);
+            } else {
+                // Fallback to old localStorage method
+                const savedData = localStorage.getItem(`idleCultivationGameSave_${this._saveKey}`);
+                if (savedData) {
+                    saveData = JSON.parse(savedData);
+                }
+            }
+
+            if (!saveData) {
                 return false;
             }
 
-            const parsedData = JSON.parse(savedData);
-            const migratedState = this._migrateState(parsedData.state, parsedData.version);
+            // Extract state data (handle both old and new formats)
+            let gameStateData = saveData.state || saveData;
+            let version = saveData.version || this._getSaveVersion();
+            let timestamp = saveData.timestamp || Date.now();
 
-            this._state = migratedState;
+            // Migrate state if needed
+            if (config.migrate) {
+                gameStateData = await this._migrateState(gameStateData, version);
+            }
+
+            // Validate state if requested
+            if (config.validate && window.dataValidator) {
+                const validation = window.dataValidator.validateGameState(gameStateData, { sanitize: true });
+                if (validation.isValid) {
+                    gameStateData = validation.sanitizedData;
+                } else if (validation.hasCorruption) {
+                    console.warn('GameState: Loaded data has corruption, attempting repair');
+                    const repair = window.dataValidator.repairData(gameStateData);
+                    if (repair.success) {
+                        gameStateData = repair.data;
+                    } else {
+                        console.error('GameState: Failed to repair corrupted data');
+                        return false;
+                    }
+                }
+            }
+
+            this._state = gameStateData;
             this._previousState = this._deepClone(this._state);
             this._isDirty = false;
 
             if (this._eventManager) {
                 this._eventManager.emit('gameState:loaded', {
-                    timestamp: parsedData.timestamp,
-                    version: parsedData.version
+                    timestamp: timestamp,
+                    version: version,
+                    method: this._saveManager ? 'SaveManager' : 'localStorage',
+                    validated: config.validate,
+                    migrated: config.migrate
                 });
             }
 
@@ -243,28 +395,59 @@ class GameState {
 
     /**
      * Export the game state for backup or transfer
-     * @returns {string} JSON string of the state
+     * @param {Object} options - Export options
+     * @returns {Promise<string>} JSON string of the state
      */
-    export() {
-        return JSON.stringify({
-            state: this._state,
-            timestamp: Date.now(),
-            version: this._getSaveVersion()
-        }, null, 2);
+    async export(options = {}) {
+        try {
+            if (this._saveManager) {
+                // Use SaveManager's export functionality
+                return await this._saveManager.export(this._saveKey, options);
+            } else {
+                // Fallback to simple export
+                return JSON.stringify({
+                    state: this._state,
+                    timestamp: Date.now(),
+                    version: this._getSaveVersion()
+                }, null, 2);
+            }
+        } catch (error) {
+            console.error('GameState: Failed to export:', error);
+            throw error;
+        }
     }
 
     /**
      * Import a game state from a JSON string
      * @param {string} jsonData - JSON string of the state
-     * @returns {boolean} Whether the import was successful
+     * @param {Object} options - Import options
+     * @returns {Promise<boolean>} Whether the import was successful
      */
-    import(jsonData) {
+    async import(jsonData, options = {}) {
         try {
-            const parsedData = JSON.parse(jsonData);
-            const migratedState = this._migrateState(parsedData.state, parsedData.version);
+            const config = {
+                validate: true,
+                overwrite: true,
+                backup: true,
+                ...options
+            };
 
-            this.update(() => migratedState, { source: 'import' });
-            return true;
+            if (this._saveManager) {
+                // Use SaveManager's import functionality
+                const success = await this._saveManager.import(jsonData, this._saveKey, config);
+                if (success) {
+                    // Reload the state from the imported data
+                    await this.load({ validate: config.validate });
+                }
+                return success;
+            } else {
+                // Fallback to simple import
+                const parsedData = JSON.parse(jsonData);
+                const migratedState = await this._migrateState(parsedData.state, parsedData.version);
+
+                this.update(() => migratedState, { source: 'import' });
+                return true;
+            }
         } catch (error) {
             console.error('GameState: Failed to import:', error);
             return false;
@@ -513,10 +696,203 @@ class GameState {
         return '1.0.0';
     }
 
-    _migrateState(state, version) {
-        // Future state migration logic will go here
-        // For now, just return the state as-is
-        return state;
+    async _migrateState(state, version) {
+        try {
+            // Use MigrationManager if available
+            if (window.migrationManager) {
+                const currentVersion = this._getSaveVersion();
+                if (version !== currentVersion) {
+                    console.log(`GameState: Migrating from ${version} to ${currentVersion}`);
+                    const migrationResult = await window.migrationManager.migrate(state, version, currentVersion);
+                    if (migrationResult.success) {
+                        return migrationResult.data;
+                    } else {
+                        console.warn('GameState: Migration failed, using original state');
+                    }
+                }
+            }
+
+            // Return state as-is if no migration needed or available
+            return state;
+        } catch (error) {
+            console.error('GameState: Migration error:', error);
+            return state;
+        }
+    }
+
+    /**
+     * Initialize auto-save system
+     */
+    _initializeAutoSave() {
+        if (this._autoSaveConfig.enabled) {
+            this._startAutoSave();
+        }
+
+        // Set up event listeners for auto-save triggers
+        if (this._eventManager && this._autoSaveConfig.onSignificantEvents) {
+            this._setupAutoSaveEventListeners();
+        }
+
+        // Set up page lifecycle listeners
+        this._setupPageLifecycleListeners();
+    }
+
+    /**
+     * Start the auto-save timer
+     */
+    _startAutoSave() {
+        if (this._autoSaveTimer) {
+            this._stopAutoSave();
+        }
+
+        this._autoSaveTimer = setInterval(() => {
+            this._performAutoSave();
+        }, this._autoSaveConfig.interval);
+
+        console.log(`GameState: Auto-save started with ${this._autoSaveConfig.interval}ms interval`);
+    }
+
+    /**
+     * Stop the auto-save timer
+     */
+    _stopAutoSave() {
+        if (this._autoSaveTimer) {
+            clearInterval(this._autoSaveTimer);
+            this._autoSaveTimer = null;
+            console.log('GameState: Auto-save stopped');
+        }
+    }
+
+    /**
+     * Check if auto-save should be triggered
+     * @param {string} source - Source of the change
+     */
+    _checkAutoSaveTriggers(source) {
+        if (!this._autoSaveConfig.enabled) {
+            return;
+        }
+
+        // Check for significant events
+        if (this._autoSaveConfig.onSignificantEvents && this._significantEvents.has(source)) {
+            this._triggerAutoSave('significant_event');
+            return;
+        }
+
+        // Check for maximum unsaved changes
+        if (this._unsavedChanges >= this._autoSaveConfig.maxUnsavedChanges) {
+            this._triggerAutoSave('max_changes');
+            return;
+        }
+
+        // Check for time-based trigger
+        const timeSinceLastSave = Date.now() - this._lastAutoSaveTime;
+        if (timeSinceLastSave >= this._autoSaveConfig.interval) {
+            this._triggerAutoSave('interval');
+        }
+    }
+
+    /**
+     * Trigger an auto-save
+     * @param {string} reason - Reason for the auto-save
+     */
+    _triggerAutoSave(reason) {
+        setTimeout(() => {
+            this.save({ auto: true, reason }).catch(error => {
+                console.error('GameState: Auto-save failed:', error);
+            });
+        }, 0);
+    }
+
+    /**
+     * Perform scheduled auto-save
+     */
+    async _performAutoSave() {
+        if (this._isDirty) {
+            try {
+                await this.save({ auto: true, reason: 'scheduled' });
+            } catch (error) {
+                console.error('GameState: Scheduled auto-save failed:', error);
+            }
+        }
+    }
+
+    /**
+     * Set up event listeners for significant events
+     */
+    _setupAutoSaveEventListeners() {
+        // Listen for significant game events that should trigger saves
+        for (const eventType of this._significantEvents) {
+            this._eventManager.on(eventType, () => {
+                this._triggerAutoSave(eventType);
+            });
+        }
+    }
+
+    /**
+     * Set up page lifecycle listeners for auto-save
+     */
+    _setupPageLifecycleListeners() {
+        if (typeof window === 'undefined') {
+            return; // Not in browser environment
+        }
+
+        // Save on page visibility change
+        if (this._autoSaveConfig.saveOnVisibilityChange) {
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && this._isDirty) {
+                    this._triggerAutoSave('visibility_change');
+                }
+            });
+        }
+
+        // Save on before unload
+        if (this._autoSaveConfig.saveOnBeforeUnload) {
+            window.addEventListener('beforeunload', () => {
+                if (this._isDirty) {
+                    // Synchronous save for page unload
+                    try {
+                        const saveData = {
+                            state: this._state,
+                            timestamp: Date.now(),
+                            version: this._getSaveVersion()
+                        };
+
+                        if (this._saveManager) {
+                            // Try to save synchronously if possible
+                            localStorage.setItem(`idleCultivationGameSave_${this._saveKey}_emergency`, JSON.stringify(saveData));
+                        } else {
+                            localStorage.setItem(`idleCultivationGameSave_${this._saveKey}`, JSON.stringify(saveData));
+                        }
+                    } catch (error) {
+                        console.error('GameState: Emergency save failed:', error);
+                    }
+                }
+            });
+        }
+
+        // Save on focus loss
+        window.addEventListener('blur', () => {
+            if (this._isDirty) {
+                this._triggerAutoSave('focus_loss');
+            }
+        });
+    }
+
+    /**
+     * Get auto-save statistics
+     * @returns {Object} Auto-save statistics
+     */
+    getAutoSaveStats() {
+        return {
+            enabled: this._autoSaveConfig.enabled,
+            interval: this._autoSaveConfig.interval,
+            unsavedChanges: this._unsavedChanges,
+            lastSaveTime: this._lastSaveTime,
+            lastAutoSaveTime: this._lastAutoSaveTime,
+            isDirty: this._isDirty,
+            timeSinceLastSave: Date.now() - this._lastSaveTime,
+            nextAutoSaveIn: Math.max(0, this._autoSaveConfig.interval - (Date.now() - this._lastAutoSaveTime))
+        };
     }
 }
 

@@ -221,8 +221,14 @@ class IdleCultivationGame {
         this.gameState = new GameState();
         this.gameState.setEventManager(this.eventManager);
 
+        // Initialize SaveManager and inject into GameState
+        if (typeof window.saveManager !== 'undefined') {
+            this.gameState.setSaveManager(window.saveManager);
+            console.log('🔧 SaveManager integrated with GameState');
+        }
+
         // Try to load existing save data
-        const loadSuccess = this.gameState.load();
+        const loadSuccess = await this.gameState.load();
         if (loadSuccess) {
             console.log('💾 Loaded existing save data');
         } else {
