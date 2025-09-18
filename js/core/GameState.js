@@ -545,11 +545,90 @@ class GameState {
             },
             scriptures: {
                 collection: [],
+                equipped: {
+                    primary: null,
+                    secondary: null,
+                    passive1: null,
+                    passive2: null,
+                    passive3: null
+                },
+                favorites: [],
+                tags: {},
+                sortBy: 'power',
+                filterBy: {
+                    rarity: 'all',
+                    category: 'all',
+                    level: 'all',
+                    equipped: 'all'
+                },
                 nextId: 1
             },
             gacha: {
-                pityCounter: 0,
-                currentBanner: 'standard'
+                currentPool: 'standard',
+                pityCounts: {
+                    standard: { epic: 0, legendary: 0 },
+                    premium: { epic: 0, legendary: 0 },
+                    qi_focus: { epic: 0, legendary: 0 },
+                    body_focus: { epic: 0, legendary: 0 },
+                    event_limited: { epic: 0, legendary: 0 }
+                },
+                pullHistory: [],
+                totalPulls: 0,
+                guaranteedCounts: {},
+                eventEndTimes: {}
+            },
+            gachaStats: {
+                totalPulls: 0,
+                totalSpent: { jade: 0, crystals: 0 },
+                scripturesObtained: {},
+                averageRarity: 0,
+                luckScore: 100
+            },
+            scriptureStats: {
+                totalScriptures: 0,
+                scripturesByRarity: {},
+                scripturesByCategory: {},
+                totalPower: 0,
+                collectionCompletion: 0,
+                favoriteCount: 0,
+                duplicatesConverted: 0
+            },
+            enhancement: {
+                activeEnhancements: {},
+                failureProtection: {},
+                enhancementQueue: [],
+                isProcessing: false
+            },
+            enhancementMaterials: {
+                enhancementStones: 0,
+                awakeningStones: 0,
+                essenceOfCultivation: 0,
+                stardustFragment: 0,
+                voidCrystal: 0,
+                dragonScale: 0,
+                phoenixFeather: 0
+            },
+            enhancementStats: {
+                totalEnhancements: 0,
+                successfulEnhancements: 0,
+                failedEnhancements: 0,
+                awakeningsPerformed: 0,
+                breakthroughsAchieved: 0,
+                materialsUsed: {},
+                averageSuccessRate: 0,
+                totalSpent: { jade: 0, crystals: 0 }
+            },
+            scriptureIntegration: {
+                isActive: false,
+                effectsApplied: false,
+                lastUpdateTime: 0,
+                cultivationModifiers: {},
+                combatModifiers: {},
+                resourceModifiers: {}
+            },
+            scriptureAchievements: {
+                scriptureRelated: {},
+                milestones: {}
             },
             combat: {
                 wins: 0,
