@@ -1,10 +1,19 @@
 ---
 name: Roguelite-Skills-System
-status: backlog
+status: decomposed
 created: 2025-09-18T12:39:09Z
 progress: 0%
 prd: .claude/prds/Roguelite-Skills-System.md
-github: [Will be updated when synced to GitHub]
+github:
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/14
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/17
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/23
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/33
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/40
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/42
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/44
+  - https://github.com/collrest-a11y/idle-cultivation-game/issues/46
+decomposed: 2025-09-18T14:05:00Z
 ---
 
 # Epic: Roguelite-Skills-System
@@ -85,16 +94,40 @@ gameState.skills = {
 - **Balance Testing**: Automated progression curve validation
 - **Performance Tests**: Large skill tree navigation and effect calculation benchmarks
 
-## Task Breakdown Preview
-High-level task categories that will be created:
-- [ ] Core System: SkillSystem, SkillManager, and data structures
-- [ ] Gacha Integration: Extend existing gacha system with skill pools
-- [ ] UI Components: Skill tree interface and management screens
-- [ ] Synergy System: Dynamic synergy discovery and effect calculation
-- [ ] Evolution System: Skill evolution paths and advancement mechanics
-- [ ] Cultivation Integration: Realm-gated progression and unlocks
-- [ ] Balance & Testing: Progression curves and comprehensive testing
-- [ ] Documentation: Player guides and system documentation
+## Implementation Issues
+The epic has been decomposed into the following GitHub issues:
+
+- [#14: Core Skills System: Foundation Architecture](https://github.com/collrest-a11y/idle-cultivation-game/issues/14)
+  - SkillSystem, SkillManager, and data structures
+  - Priority: High | Effort: 3-5 days
+
+- [#17: Skill Gacha Integration: Extend Existing Gacha System](https://github.com/collrest-a11y/idle-cultivation-game/issues/17)
+  - Extend gacha system with skill pools and fragments
+  - Priority: High | Effort: 2-3 days | Depends on: #14
+
+- [#23: Skills UI: Interactive Skill Tree and Management Interface](https://github.com/collrest-a11y/idle-cultivation-game/issues/23)
+  - Skill tree interface and management screens
+  - Priority: Medium | Effort: 4-5 days | Depends on: #14
+
+- [#33: Dynamic Synergy System: Skill Combination Discovery](https://github.com/collrest-a11y/idle-cultivation-game/issues/33)
+  - Dynamic synergy discovery and effect calculation
+  - Priority: Medium | Effort: 3-4 days | Depends on: #14, #23
+
+- [#40: Skill Evolution System: Advancement and Specialization](https://github.com/collrest-a11y/idle-cultivation-game/issues/40)
+  - Skill evolution paths and advancement mechanics
+  - Priority: Medium | Effort: 3-4 days | Depends on: #14, #33
+
+- [#42: Cultivation Integration: Realm-Gated Skill Progression](https://github.com/collrest-a11y/idle-cultivation-game/issues/42)
+  - Realm-gated progression and cultivation unlocks
+  - Priority: High | Effort: 2-3 days | Depends on: #14
+
+- [#44: Skills System Testing: Comprehensive Test Suite](https://github.com/collrest-a11y/idle-cultivation-game/issues/44)
+  - Comprehensive testing and performance validation
+  - Priority: High | Effort: 2-3 days | Depends on: All above
+
+- [#46: Skills Balance & Polish: Progression Tuning and UX Enhancements](https://github.com/collrest-a11y/idle-cultivation-game/issues/46)
+  - Balance tuning, UX polish, and production readiness
+  - Priority: Medium | Effort: 2-3 days | Depends on: All above
 
 ## Dependencies
 

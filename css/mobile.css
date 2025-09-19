@@ -1,0 +1,646 @@
+/**
+ * Mobile Responsiveness Enhancements
+ * Optimized mobile experience for idle cultivation game
+ */
+
+/* Root Variables for Mobile */
+:root {
+    --mobile-safe-area-top: env(safe-area-inset-top);
+    --mobile-safe-area-bottom: env(safe-area-inset-bottom);
+    --mobile-safe-area-left: env(safe-area-inset-left);
+    --mobile-safe-area-right: env(safe-area-inset-right);
+
+    --mobile-touch-target: 44px;
+    --mobile-margin: 16px;
+    --mobile-padding: 12px;
+    --mobile-gap: 8px;
+}
+
+/* Touch Device Optimizations */
+@media (pointer: coarse) {
+    /* Increase touch targets */
+    .btn, button, .nav-link, .tab-button {
+        min-height: var(--mobile-touch-target);
+        min-width: var(--mobile-touch-target);
+        padding: 12px 16px;
+    }
+
+    /* Improve button spacing */
+    .btn + .btn,
+    button + button {
+        margin-left: 8px;
+    }
+
+    /* Better touch feedback */
+    .btn:active,
+    button:active,
+    .nav-link:active {
+        transform: scale(0.98);
+        transition: transform 0.1s ease;
+    }
+}
+
+/* Large Mobile Devices (landscape phones, small tablets) */
+@media screen and (max-width: 1024px) {
+    .container {
+        max-width: 100%;
+        padding: 0 var(--mobile-margin);
+    }
+
+    /* Navigation improvements */
+    .nav-list {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .nav-item {
+        flex: none;
+        min-width: 80px;
+    }
+
+    /* Card layouts */
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--mobile-gap);
+    }
+
+    .cultivation-paths {
+        flex-direction: column;
+        gap: var(--mobile-margin);
+    }
+
+    /* Modal adjustments */
+    .modal-dialog {
+        width: 95vw;
+        max-height: 90vh;
+        margin: var(--mobile-margin);
+    }
+}
+
+/* Medium Mobile Devices (most phones in landscape) */
+@media screen and (max-width: 768px) {
+    /* Typography scaling */
+    .game-title {
+        font-size: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+    }
+
+    /* Layout adjustments */
+    .game-header {
+        flex-direction: column;
+        padding: var(--mobile-padding);
+        gap: var(--mobile-gap);
+    }
+
+    .resources {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: var(--mobile-gap);
+    }
+
+    .resource {
+        flex: 0 1 auto;
+        min-width: 100px;
+    }
+
+    /* Card grids */
+    .equipment-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: var(--mobile-gap);
+    }
+
+    .scripture-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--mobile-gap);
+    }
+
+    /* Form improvements */
+    .form-group {
+        margin-bottom: var(--mobile-margin);
+    }
+
+    .form-control {
+        min-height: var(--mobile-touch-target);
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    /* Tab navigation */
+    .tab-nav {
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        scroll-behavior: smooth;
+    }
+
+    .tab-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-list {
+        min-width: max-content;
+        padding: 0 var(--mobile-padding);
+    }
+
+    .tab-button {
+        white-space: nowrap;
+        min-width: 80px;
+    }
+
+    /* Progress bars */
+    .progress-track {
+        height: 12px; /* Larger for better visibility */
+    }
+
+    /* Cultivation specific */
+    .cultivation-actions {
+        flex-direction: column;
+        gap: var(--mobile-gap);
+    }
+
+    .cultivation-button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Combat interface */
+    .combat-interface {
+        flex-direction: column;
+        gap: var(--mobile-margin);
+    }
+
+    .combat-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    /* Gacha interface */
+    .banner-selection {
+        flex-direction: column;
+        align-items: center;
+        gap: var(--mobile-margin);
+    }
+
+    .pull-section {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--mobile-gap);
+    }
+
+    .pull-buttons {
+        flex-direction: column;
+        width: 100%;
+        gap: var(--mobile-gap);
+    }
+
+    /* Inventory */
+    .inventory-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: var(--mobile-gap);
+    }
+
+    .inventory-item {
+        aspect-ratio: 1;
+        min-height: 80px;
+    }
+
+    /* Settings */
+    .settings-grid {
+        grid-template-columns: 1fr;
+        gap: var(--mobile-margin);
+    }
+
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--mobile-gap);
+    }
+}
+
+/* Small Mobile Devices (phones in portrait) */
+@media screen and (max-width: 480px) {
+    /* Typography further scaling */
+    .game-title {
+        font-size: 1.25rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+    }
+
+    /* Reduced spacing */
+    .game-content {
+        padding: var(--mobile-padding);
+    }
+
+    .card {
+        padding: var(--mobile-padding);
+        margin-bottom: var(--mobile-gap);
+    }
+
+    /* Full-width buttons on small screens */
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-group .btn {
+        width: 100%;
+        margin: 2px 0;
+    }
+
+    /* Simplified navigation */
+    .nav-list {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .nav-item {
+        width: 100%;
+    }
+
+    .nav-link {
+        justify-content: center;
+        padding: var(--mobile-padding);
+    }
+
+    /* Single column layouts */
+    .stats-grid,
+    .equipment-grid,
+    .scripture-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Simplified modals */
+    .modal-dialog {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    .modal-header {
+        padding: var(--mobile-padding);
+    }
+
+    .modal-body {
+        padding: var(--mobile-padding);
+    }
+
+    .modal-footer {
+        padding: var(--mobile-padding);
+        flex-direction: column;
+        gap: var(--mobile-gap);
+    }
+
+    /* Resource display */
+    .resource {
+        font-size: 0.875rem;
+        padding: 4px 8px;
+    }
+
+    /* Compact progress tracking */
+    .progress-container {
+        margin-bottom: var(--mobile-gap);
+    }
+
+    .progress-label {
+        font-size: 0.75rem;
+    }
+
+    /* Floating UI elements */
+    .floating-text {
+        font-size: 14px !important;
+    }
+
+    /* Simplified character creation */
+    .fragment-choices {
+        grid-template-columns: 1fr;
+        gap: var(--mobile-gap);
+    }
+
+    .fragment-option {
+        padding: var(--mobile-padding);
+    }
+}
+
+/* Very Small Devices (320px and below) */
+@media screen and (max-width: 320px) {
+    /* Minimal spacing */
+    :root {
+        --mobile-margin: 8px;
+        --mobile-padding: 8px;
+        --mobile-gap: 4px;
+    }
+
+    /* Ultra-compact layout */
+    .game-content {
+        padding: var(--mobile-gap);
+    }
+
+    .card {
+        padding: var(--mobile-gap);
+    }
+
+    /* Tiny text where necessary */
+    .resource .value {
+        font-size: 0.75rem;
+    }
+
+    .nav-text {
+        font-size: 0.75rem;
+    }
+
+    /* Hide non-essential decorative elements */
+    .decoration,
+    .border-decoration,
+    .glow-effect {
+        display: none;
+    }
+}
+
+/* Landscape Orientation Optimizations */
+@media screen and (orientation: landscape) and (max-height: 600px) {
+    /* Reduce vertical spacing in landscape */
+    .game-header {
+        padding: 8px var(--mobile-margin);
+    }
+
+    .card {
+        margin-bottom: 8px;
+    }
+
+    /* Horizontal layout for cultivation actions */
+    .cultivation-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Compact progress bars */
+    .progress-track {
+        height: 8px;
+    }
+
+    /* Side-by-side resource display */
+    .resources {
+        flex-direction: row;
+        justify-content: space-around;
+        flex-wrap: wrap;
+    }
+}
+
+/* High-DPI Displays */
+@media screen and (min-resolution: 2dppx) {
+    /* Sharper borders and shadows */
+    .card,
+    .btn,
+    .modal-dialog {
+        border-width: 0.5px;
+    }
+
+    /* Optimized glow effects */
+    .glow-effect {
+        filter: blur(0.5px);
+    }
+}
+
+/* Touch-specific Improvements */
+.touch-device {
+    /* Larger touch targets */
+    .btn,
+    .nav-link,
+    .tab-button {
+        min-height: 48px;
+        min-width: 48px;
+    }
+
+    /* Better touch feedback */
+    .touchable {
+        -webkit-tap-highlight-color: rgba(0, 212, 255, 0.3);
+        tap-highlight-color: rgba(0, 212, 255, 0.3);
+    }
+
+    /* Prevent text selection on touch */
+    .no-select {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+}
+
+/* Accessibility Improvements for Mobile */
+@media (prefers-reduced-motion: reduce) {
+    /* Minimal animations on mobile for battery life */
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Dark Mode Mobile Optimizations */
+@media (prefers-color-scheme: dark) and (max-width: 768px) {
+    /* Improved contrast for mobile screens */
+    .card {
+        background: rgba(20, 25, 40, 0.95);
+        border-color: rgba(0, 212, 255, 0.3);
+    }
+
+    /* Better text readability */
+    .text-secondary {
+        color: rgba(255, 255, 255, 0.8);
+    }
+}
+
+/* Battery Saving Mode */
+@media (prefers-reduced-motion: reduce) {
+    .performance-mode .animate-float,
+    .performance-mode .animate-pulse,
+    .performance-mode .animate-glow {
+        animation: none !important;
+    }
+
+    .performance-mode .particle,
+    .performance-mode .floating-text {
+        display: none !important;
+    }
+}
+
+/* Print Optimizations for Mobile */
+@media print {
+    /* Mobile-friendly print layout */
+    .nav-list,
+    .tab-nav,
+    .floating-text,
+    .particle,
+    .modal {
+        display: none !important;
+    }
+
+    .game-content {
+        padding: 0;
+    }
+
+    .card {
+        break-inside: avoid;
+        margin-bottom: 16px;
+    }
+}
+
+/* Safe Area Support for Notched Devices */
+.safe-area-support {
+    padding-top: var(--mobile-safe-area-top);
+    padding-bottom: var(--mobile-safe-area-bottom);
+    padding-left: var(--mobile-safe-area-left);
+    padding-right: var(--mobile-safe-area-right);
+}
+
+/* iOS Specific Optimizations */
+@supports (-webkit-touch-callout: none) {
+    /* iOS Safari specific fixes */
+    .game-container {
+        min-height: -webkit-fill-available;
+    }
+
+    /* Prevent zoom on input focus */
+    .form-control,
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    /* Smooth scrolling */
+    .scrollable {
+        -webkit-overflow-scrolling: touch;
+        overflow-scrolling: touch;
+    }
+}
+
+/* Android Specific Optimizations */
+@media screen and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) {
+    /* Android Chrome specific adjustments */
+    .game-container {
+        min-height: 100vh;
+        min-height: calc(100vh - env(keyboard-inset-height, 0px));
+    }
+}
+
+/* Performance Optimizations for Low-End Devices */
+.low-performance-mode {
+    /* Disable expensive effects */
+    .glow-effect,
+    .shadow-effect,
+    .blur-effect {
+        display: none !important;
+    }
+
+    /* Simplified animations */
+    .animate-fade-in,
+    .animate-slide-in-up {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    /* Reduced visual complexity */
+    .gradient-bg {
+        background: var(--primary-bg) !important;
+    }
+
+    .border-glow {
+        border: 1px solid var(--border-color) !important;
+        box-shadow: none !important;
+    }
+}
+
+/* Utilities for Mobile Development */
+.mobile-only {
+    display: none;
+}
+
+.desktop-only {
+    display: block;
+}
+
+@media screen and (max-width: 768px) {
+    .mobile-only {
+        display: block;
+    }
+
+    .desktop-only {
+        display: none;
+    }
+}
+
+/* Responsive Text Scaling */
+.responsive-text {
+    font-size: clamp(0.875rem, 2.5vw, 1.125rem);
+}
+
+.responsive-title {
+    font-size: clamp(1.25rem, 4vw, 2rem);
+}
+
+/* Mobile-First Flexbox Utilities */
+.flex-mobile-column {
+    flex-direction: column;
+}
+
+.flex-mobile-wrap {
+    flex-wrap: wrap;
+}
+
+@media screen and (min-width: 768px) {
+    .flex-mobile-column {
+        flex-direction: row;
+    }
+
+    .flex-mobile-wrap {
+        flex-wrap: nowrap;
+    }
+}
+
+/* Responsive Grid Utilities */
+.grid-mobile-1 {
+    grid-template-columns: 1fr;
+}
+
+.grid-mobile-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media screen and (min-width: 768px) {
+    .grid-mobile-1 {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .grid-mobile-2 {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+}
+
+/* Mobile Debugging (Development Only) */
+.debug-mobile {
+    position: fixed;
+    top: 0;
+    right: 0;
+    background: rgba(255, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    font-size: 12px;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.debug-mobile::after {
+    content: 'W: ' attr(data-width) ' H: ' attr(data-height);
+}

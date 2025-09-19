@@ -4,7 +4,7 @@ status: backlog
 created: 2025-09-18T12:37:45Z
 progress: 0%
 prd: .claude/prds/Advanced-MMORPG-Systems.md
-github: [Will be updated when synced to GitHub]
+github: https://github.com/collrest-a11y/idle-cultivation-game/issues/18,19,20,21,22,25,27,28,29,34,35,36,38
 ---
 
 # Epic: Advanced-MMORPG-Systems
@@ -58,16 +58,161 @@ Develop player-to-player trading with market systems, pricing mechanisms, and se
 ### Phase 5: Boss Events & VIP
 Complete the system with scheduled boss battles and VIP progression that provides monetization and endgame content.
 
-## Task Breakdown Preview
-High-level task categories that will be created:
-- [ ] Universal CP System: Extend cultivation system with equipment, VIP, and sect bonuses
-- [ ] Monster Hunting Zones: Implement zone progression with CP gating and idle hunting mechanics
-- [ ] Interdependent Crafting: Create four-profession system with material dependencies
-- [ ] Player Trading Market: Build trading interface with search, pricing, and transaction systems
-- [ ] Scheduled Boss Events: Implement world and sect boss systems with real-time participation
-- [ ] VIP Progression System: Add monetization layer with benefits and exclusive content
-- [ ] Economic Balance: Tune material flows, pricing, and progression curves
-- [ ] UI Integration: Ensure consistent Girls' Frontline theme across all new systems
+## Issues Breakdown
+
+### Phase 1: Core CP System (Foundation)
+**Issue #18: Universal Combat Power (CP) System** ([GitHub #18](https://github.com/collrest-a11y/idle-cultivation-game/issues/18))
+- **Priority**: Critical (Blocks all other features)
+- **Story Points**: 8
+- **Dependencies**: None (extends existing cultivation system)
+- **Description**: Extend current cultivation CP calculations to include equipment, scriptures, VIP bonuses, and sect contributions. Create centralized CP calculation engine.
+- **Acceptance Criteria**:
+  - CP calculation includes all sources (cultivation + equipment + VIP + sect)
+  - Real-time CP display with breakdown visualization
+  - Performance: CP calculations under 10ms
+  - Integration with existing save/load system
+
+**Issue #19: Equipment System Integration** ([GitHub #19](https://github.com/collrest-a11y/idle-cultivation-game/issues/19))
+- **Priority**: High
+- **Story Points**: 5
+- **Dependencies**: Issue #18
+- **Description**: Implement equipment slots, stat bonuses, and CP contribution calculations for weapons, armor, and accessories.
+- **Acceptance Criteria**:
+  - Equipment slot management (weapon, armor, accessories)
+  - Stat bonus calculations affecting CP
+  - Equipment upgrading and enhancement system
+  - Persistence in save system
+
+### Phase 2: Monster Hunting & Zones
+**Issue #20: Zone and Monster Database** ([GitHub #20](https://github.com/collrest-a11y/idle-cultivation-game/issues/20))
+- **Priority**: High
+- **Story Points**: 6
+- **Dependencies**: Issue #18 (CP gating)
+- **Description**: Create zone progression system with monsters, CP requirements, and loot tables. Implement zone browsing interface.
+- **Acceptance Criteria**:
+  - Multiple hunting zones with CP requirements
+  - Monster database with stats and loot tables
+  - Zone progression and unlock system
+  - UI for zone/monster browsing
+
+**Issue #21: Idle Monster Hunting System** ([GitHub #21](https://github.com/collrest-a11y/idle-cultivation-game/issues/21))
+- **Priority**: High
+- **Story Points**: 7
+- **Dependencies**: Issues #18, #20
+- **Description**: Implement background monster hunting with idle calculations, experience gain, and loot collection.
+- **Acceptance Criteria**:
+  - Idle hunting mechanics with offline progression
+  - Experience and loot calculation system
+  - Hunting efficiency based on CP difference
+  - Integration with existing idle calculation patterns
+
+### Phase 3: Crafting Professions
+**Issue #22: Crafting Profession Framework** ([GitHub #22](https://github.com/collrest-a11y/idle-cultivation-game/issues/22))
+- **Priority**: Medium
+- **Story Points**: 8
+- **Dependencies**: Issue #21 (materials from hunting)
+- **Description**: Implement four interconnected crafting professions with leveling, recipes, and material dependencies.
+- **Acceptance Criteria**:
+  - Four profession system (Alchemy, Smithing, Enchanting, Cooking)
+  - Profession leveling and experience system
+  - Recipe trees with material requirements
+  - Idle crafting with offline progression
+
+**Issue #25: Material and Recipe System** ([GitHub #25](https://github.com/collrest-a11y/idle-cultivation-game/issues/25))
+- **Priority**: Medium
+- **Story Points**: 6
+- **Dependencies**: Issues #21, #22
+- **Description**: Create comprehensive material system with interdependencies between professions and hunting loot.
+- **Acceptance Criteria**:
+  - Material database with rarity and sources
+  - Recipe system with material requirements
+  - Cross-profession material dependencies
+  - Material storage and inventory management
+
+### Phase 4: Trading & Market
+**Issue #27: Player Trading Interface** ([GitHub #27](https://github.com/collrest-a11y/idle-cultivation-game/issues/27))
+- **Priority**: Medium
+- **Story Points**: 7
+- **Dependencies**: Issue #25 (tradeable items)
+- **Description**: Build player-to-player trading system with search, filters, and transaction processing.
+- **Acceptance Criteria**:
+  - Trading interface with search and filters
+  - Secure transaction system
+  - Price tracking and market history
+  - Integration with sect resource sharing
+
+**Issue #28: Market Economy Engine** ([GitHub #28](https://github.com/collrest-a11y/idle-cultivation-game/issues/28))
+- **Priority**: Low
+- **Story Points**: 5
+- **Dependencies**: Issue #27
+- **Description**: Implement pricing algorithms, market dynamics, and economic balance systems.
+- **Acceptance Criteria**:
+  - Dynamic pricing based on supply/demand
+  - Market manipulation prevention
+  - Economic balance monitoring tools
+  - Price history and trend analysis
+
+### Phase 5: Boss Events & VIP
+**Issue #29: Scheduled Boss Event System** ([GitHub #29](https://github.com/collrest-a11y/idle-cultivation-game/issues/29))
+- **Priority**: Medium
+- **Story Points**: 8
+- **Dependencies**: Issues #18, #20 (CP system and zones)
+- **Description**: Implement world and sect bosses with real-time scheduling, participation tracking, and rewards.
+- **Acceptance Criteria**:
+  - Boss event scheduling system
+  - Real-time participation tracking
+  - Damage contribution and reward calculation
+  - Both world and sect boss variants
+
+**Issue #34: VIP Progression and Monetization** ([GitHub #34](https://github.com/collrest-a11y/idle-cultivation-game/issues/34))
+- **Priority**: Low
+- **Story Points**: 6
+- **Dependencies**: Issue #18 (CP bonuses)
+- **Description**: Add VIP system with purchase tracking, benefit application, and exclusive content access.
+- **Acceptance Criteria**:
+  - VIP level progression system
+  - Benefit tracking and application
+  - Exclusive content gating
+  - Purchase interface and tracking
+
+### Cross-Cutting Concerns
+**Issue #35: Economic Balance and Tuning** ([GitHub #35](https://github.com/collrest-a11y/idle-cultivation-game/issues/35))
+- **Priority**: Medium
+- **Story Points**: 5
+- **Dependencies**: Issues #22, #25, #27 (complete economic system)
+- **Description**: Balance material flows, pricing curves, and progression rates across all systems.
+- **Acceptance Criteria**:
+  - Balanced material drop rates
+  - Sustainable economic progression
+  - Prevention of exploitation/inflation
+  - Comprehensive testing of economic flows
+
+**Issue #38: UI Integration and Theming** ([GitHub #38](https://github.com/collrest-a11y/idle-cultivation-game/issues/38))
+- **Priority**: Low
+- **Story Points**: 4
+- **Dependencies**: All previous issues
+- **Description**: Ensure all new systems maintain Girls' Frontline UI consistency and 60fps performance.
+- **Acceptance Criteria**:
+  - Consistent Girls' Frontline theme
+  - 60fps performance across all new interfaces
+  - Mobile-responsive design
+  - Accessibility compliance
+
+## Implementation Order and Dependencies
+```
+Phase 1 (Critical Path): #18 → #19
+Phase 2 (Parallel after #18): #20 → #21
+Phase 3 (After #21): #22 → #25
+Phase 4 (After #25): #27 → #28
+Phase 5 (Parallel after #20): #29, #34
+Cross-cutting (Final): #35 → #38
+```
+
+## Total Effort Estimation
+- **Total Story Points**: 75 points
+- **Estimated Timeline**: 6-8 weeks (based on 10-12 points per week)
+- **Critical Path**: Issues #18 → #20 → #21 → #22 → #25 → #27 (core functionality)
+- **Parallel Development**: Boss events (#29) and VIP (#34) can develop alongside trading systems
 
 ## Dependencies
 - Existing cultivation system and CP calculations

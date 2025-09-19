@@ -1,10 +1,24 @@
 ---
 name: Tower-Climbing-System
-status: backlog
+status: synced
 created: 2025-09-18T12:35:54Z
+decomposed: 2025-09-18T12:39:21Z
+synced: 2025-09-18T12:41:15Z
 progress: 0%
+issues_created: 10
 prd: .claude/prds/Tower-Climbing-System.md
-github: [Will be updated when synced to GitHub]
+github: https://github.com/collrest-a11y/idle-cultivation-game/issues?q=is%3Aissue+tower+climbing
+issues:
+  - "#12: Tower Module Infrastructure"
+  - "#13: Basic Tower UI System"
+  - "#15: Core Climbing Mechanics"
+  - "#16: Multi-Tower Type System"
+  - "#22: Specialized Floor Types"
+  - "#24: Prestige System Implementation"
+  - "#30: Auto-Climbing System"
+  - "#31: Cross-System Integration"
+  - "#37: Performance Optimization"
+  - "#41: Special Content & Events"
 ---
 
 # Epic: Tower-Climbing-System
@@ -67,18 +81,27 @@ Implement a comprehensive tower climbing system that provides infinite vertical 
 - Performance optimization for extreme floor numbers
 - Balance testing and progression curve refinement
 
-## Task Breakdown Preview
-High-level task categories that will be created:
-- [ ] Tower Module Infrastructure: Core module setup and data models
-- [ ] Basic Tower Mechanics: Climbing logic and reward calculations
-- [ ] Multi-Tower System: Implement all tower types with unique mechanics
-- [ ] Prestige System: Reset mechanics and permanent progression bonuses
-- [ ] Auto-Climbing Features: Automation strategies and optimization
-- [ ] UI Integration: Tower interfaces and progress visualization
-- [ ] Cross-System Integration: Connect with cultivation, combat, and skill systems
-- [ ] Special Content: Event towers, VIP features, and seasonal content
-- [ ] Performance & Balance: Optimization and progression curve tuning
-- [ ] Testing & Polish: Comprehensive testing and user experience refinement
+## Implementation Issues
+
+Detailed breakdown available in: `.claude/epics/Tower-Climbing-System/issues.md`
+
+### Phase 1: Core Foundation (5-8 days)
+- **Issue #1**: Tower Module Infrastructure - Core structure and data models
+- **Issue #2**: Basic Tower UI System - Selection interface and climbing view
+- **Issue #3**: Core Climbing Mechanics - Basic progression and rewards
+
+### Phase 2: Multiple Tower Types (5-7 days)
+- **Issue #4**: Multi-Tower Type System - All five tower types with unique mechanics
+- **Issue #5**: Specialized Floor Types - Boss floors, milestones, and events
+
+### Phase 3: Prestige & Automation (5-7 days)
+- **Issue #6**: Prestige System Implementation - Reset mechanics and permanent bonuses
+- **Issue #7**: Auto-Climbing System - Automation with configurable strategies
+
+### Phase 4: Advanced Features (7-10 days)
+- **Issue #8**: Cross-System Integration - Cultivation, combat, and skill system connections
+- **Issue #9**: Performance Optimization - High floor calculation efficiency
+- **Issue #10**: Special Content & Events - VIP towers and seasonal content
 
 ## Dependencies
 - **Existing Core Systems**: EventManager, GameState, SaveManager, ModuleManager

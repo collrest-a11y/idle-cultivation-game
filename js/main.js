@@ -289,6 +289,17 @@ class IdleCultivationGame {
             console.log('🎨 AnimationManager initialized');
         }
 
+        // Initialize MobileManager
+        if (typeof MobileManager !== 'undefined') {
+            this.mobileManager = new MobileManager();
+            this.mobileManager.initialize({
+                eventManager: this.eventManager,
+                performanceMonitor: null // Will be set later when GameLoop initializes it
+            });
+            window.mobileManager = this.mobileManager; // Make globally accessible
+            console.log('📱 MobileManager initialized');
+        }
+
         // Handle offline time if returning player
         const lastPlayed = this.gameState.get('meta.lastPlayed');
         if (lastPlayed) {
