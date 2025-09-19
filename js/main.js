@@ -408,7 +408,7 @@ class IdleCultivationGame {
         // Skills Module - handles skill system mechanics
         this.moduleManager.registerModule('skills', {
             factory: async (context) => {
-                return {
+                const module = {
                     name: 'Skills Module',
                     skillIntegration: null,
                     skillTreeComponent: null,
@@ -417,36 +417,36 @@ class IdleCultivationGame {
                         console.log('Skills Module initializing...');
 
                         // Get the skill integration instance
-                        this.skillIntegration = getSkillIntegration();
+                        module.skillIntegration = getSkillIntegration();
 
                         // Initialize the skill system
-                        await this.skillIntegration.initialize(context.gameState, context.eventManager);
+                        await module.skillIntegration.initialize(context.gameState, context.eventManager);
 
                         // Initialize UI components
-                        await this._initializeSkillsUI(context);
+                        await module._initializeSkillsUI(context);
 
                         console.log('Skills Module initialized');
                     },
                     update: (deltaTime) => {
                         // Skills system updates itself via integration
-                        if (this.skillIntegration) {
-                            this.skillIntegration.update(deltaTime);
+                        if (module.skillIntegration) {
+                            module.skillIntegration.update(deltaTime);
                         }
 
                         // Update UI components
-                        if (this.skillTreeComponent) {
-                            this.skillTreeComponent.update(deltaTime);
+                        if (module.skillTreeComponent) {
+                            module.skillTreeComponent.update(deltaTime);
                         }
                     },
                     shutdown: () => {
-                        if (this.skillTreeComponent) {
-                            this.skillTreeComponent.shutdown();
+                        if (module.skillTreeComponent) {
+                            module.skillTreeComponent.shutdown();
                         }
-                        if (this.skillDetailModal) {
-                            this.skillDetailModal.shutdown();
+                        if (module.skillDetailModal) {
+                            module.skillDetailModal.shutdown();
                         }
-                        if (this.skillIntegration) {
-                            this.skillIntegration.shutdown();
+                        if (module.skillIntegration) {
+                            module.skillIntegration.shutdown();
                         }
                     },
                     async _initializeSkillsUI(context) {
@@ -454,12 +454,12 @@ class IdleCultivationGame {
                             // Initialize skill tree component
                             const skillsInterface = document.getElementById('skills-interface');
                             if (skillsInterface) {
-                                this.skillTreeComponent = new SkillTreeComponent(
+                                module.skillTreeComponent = new SkillTreeComponent(
                                     skillsInterface,
                                     context.eventManager,
-                                    this.skillIntegration.getSkillSystem()
+                                    module.skillIntegration.getSkillSystem()
                                 );
-                                await this.skillTreeComponent.initialize();
+                                await module.skillTreeComponent.initialize();
                             }
 
                             // Initialize skill detail modal
@@ -467,16 +467,16 @@ class IdleCultivationGame {
                             modalContainer.id = 'skill-detail-modal-container';
                             document.body.appendChild(modalContainer);
 
-                            this.skillDetailModal = new SkillDetailModal(
+                            module.skillDetailModal = new SkillDetailModal(
                                 modalContainer,
                                 context.eventManager,
-                                this.skillIntegration.getSkillSystem()
+                                module.skillIntegration.getSkillSystem()
                             );
-                            await this.skillDetailModal.initialize();
+                            await module.skillDetailModal.initialize();
 
                             // Set up cross-component communication
                             context.eventManager.on('skillTree:skillSelected', (data) => {
-                                this.skillDetailModal.show(data.skillId);
+                                module.skillDetailModal.show(data.skillId);
                             });
 
                             console.log('Skills UI components initialized');
@@ -486,6 +486,7 @@ class IdleCultivationGame {
                         }
                     }
                 };
+                return module;
             },
             dependencies: ['cultivation'],
             priority: 85

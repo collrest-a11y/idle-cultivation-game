@@ -12,7 +12,7 @@ class SkillManager {
 
         // Manager state
         this.isInitialized = false;
-        this.isReady = false;
+        this._isReady = false;
         this.lastStateHash = null;
 
         // Skill data cache (will be populated from skill-data.js)
@@ -57,7 +57,7 @@ class SkillManager {
             this._updateStateHash();
 
             this.isInitialized = true;
-            this.isReady = true;
+            this._isReady = true;
 
             console.log('SkillManager: Initialization complete');
 
@@ -72,7 +72,7 @@ class SkillManager {
      * @param {number} deltaTime - Time since last update in milliseconds
      */
     update(deltaTime) {
-        if (!this.isReady) {
+        if (!this._isReady) {
             return;
         }
 
@@ -90,7 +90,7 @@ class SkillManager {
      * @returns {Object} Result of unlock operation
      */
     async unlockSkill(skillId, context = {}) {
-        if (!this.isReady) {
+        if (!this._isReady) {
             throw new Error('SkillManager not ready');
         }
 
@@ -162,7 +162,7 @@ class SkillManager {
      * @returns {Object} Result of level up operation
      */
     async levelUpSkill(skillId, context = {}) {
-        if (!this.isReady) {
+        if (!this._isReady) {
             throw new Error('SkillManager not ready');
         }
 
@@ -229,7 +229,7 @@ class SkillManager {
      * @returns {Object} Result of loadout update
      */
     updateLoadout(skillIds) {
-        if (!this.isReady) {
+        if (!this._isReady) {
             throw new Error('SkillManager not ready');
         }
 
@@ -285,7 +285,7 @@ class SkillManager {
      * @returns {Object|null} Skill effects or null if not found
      */
     getSkillEffects(skillId) {
-        if (!this.isReady || !this._isSkillUnlocked(skillId)) {
+        if (!this._isReady || !this._isSkillUnlocked(skillId)) {
             return null;
         }
 
@@ -331,7 +331,7 @@ class SkillManager {
      * @returns {Object} Result of evolution operation
      */
     async evolveSkill(skillId, targetSkillId, context = {}) {
-        if (!this.isReady) {
+        if (!this._isReady) {
             throw new Error('SkillManager not ready');
         }
 
@@ -426,7 +426,7 @@ class SkillManager {
      * @returns {boolean} Whether manager is initialized and ready
      */
     isReady() {
-        return this.isReady;
+        return this._isReady;
     }
 
     /**
@@ -434,7 +434,7 @@ class SkillManager {
      */
     async shutdown() {
         try {
-            this.isReady = false;
+            this._isReady = false;
 
             // Clear caches
             this.skillDefinitions.clear();
