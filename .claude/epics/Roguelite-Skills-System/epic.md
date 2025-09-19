@@ -1,19 +1,12 @@
 ---
 name: Roguelite-Skills-System
-status: decomposed
+status: synced
 created: 2025-09-18T12:39:09Z
 progress: 0%
 prd: .claude/prds/Roguelite-Skills-System.md
-github:
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/14
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/17
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/23
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/33
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/40
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/42
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/44
-  - https://github.com/collrest-a11y/idle-cultivation-game/issues/46
+github: https://github.com/collrest-a11y/idle-cultivation-game/issues/63
 decomposed: 2025-09-18T14:05:00Z
+synced: 2025-09-19T00:43:00Z
 ---
 
 # Epic: Roguelite-Skills-System
