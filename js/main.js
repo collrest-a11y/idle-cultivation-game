@@ -405,6 +405,40 @@ class IdleCultivationGame {
             priority: 90
         });
 
+        // Skills Module - handles skill system mechanics
+        this.moduleManager.registerModule('skills', {
+            factory: async (context) => {
+                return {
+                    name: 'Skills Module',
+                    skillIntegration: null,
+                    init: async () => {
+                        console.log('Skills Module initializing...');
+
+                        // Get the skill integration instance
+                        this.skillIntegration = getSkillIntegration();
+
+                        // Initialize the skill system
+                        await this.skillIntegration.initialize(context.gameState, context.eventManager);
+
+                        console.log('Skills Module initialized');
+                    },
+                    update: (deltaTime) => {
+                        // Skills system updates itself via integration
+                        if (this.skillIntegration) {
+                            this.skillIntegration.update(deltaTime);
+                        }
+                    },
+                    shutdown: () => {
+                        if (this.skillIntegration) {
+                            this.skillIntegration.shutdown();
+                        }
+                    }
+                };
+            },
+            dependencies: ['cultivation'],
+            priority: 85
+        });
+
         // Combat Module - handles combat mechanics
         this.moduleManager.registerModule('combat', {
             factory: async (context) => {
@@ -529,6 +563,7 @@ class IdleCultivationGame {
         // Register modules with game loop
         const uiModule = this.moduleManager.getModule('ui');
         const cultivationModule = this.moduleManager.getModule('cultivation');
+        const skillsModule = this.moduleManager.getModule('skills');
         const combatModule = this.moduleManager.getModule('combat');
         const gachaModule = this.moduleManager.getModule('gacha');
         const sectModule = this.moduleManager.getModule('sect');
@@ -542,6 +577,9 @@ class IdleCultivationGame {
         // Register game systems (run at configurable fps)
         if (cultivationModule) {
             this.gameLoop.registerGameSystem(cultivationModule);
+        }
+        if (skillsModule) {
+            this.gameLoop.registerGameSystem(skillsModule);
         }
         if (combatModule) {
             this.gameLoop.registerGameSystem(combatModule);
