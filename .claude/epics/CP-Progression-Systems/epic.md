@@ -4,7 +4,7 @@ status: backlog
 created: 2025-09-18T12:32:02Z
 progress: 0%
 prd: .claude/prds/CP-Progression-Systems.md
-github: [Will be updated when synced to GitHub]
+github: https://github.com/collrest-a11y/idle-cultivation-game/issues/64
 ---
 
 # Epic: CP-Progression-Systems
@@ -279,5 +279,21 @@ class MaterialManager {
 2. **Base ProgressionSystem Architecture** - Required for all specific systems
 3. **GameState Schema Updates** - Must be completed before system implementations
 4. **Material System Foundation** - Required for upgrade/evolution mechanics
+
+## Tasks Created
+- [ ] #65 - Core Framework Implementation (parallel: false)
+- [ ] #66 - Mount System Implementation (parallel: true)
+- [ ] #67 - Wing System Implementation (parallel: true)
+- [ ] #68 - Enhanced Accessories System (parallel: true)
+- [ ] #69 - Advanced Runes System (parallel: true)
+- [ ] #70 - Meridian System Implementation (parallel: true)
+- [ ] #71 - Dantian Cultivation System (parallel: true)
+- [ ] #72 - Soul & Constellation Systems (parallel: true)
+- [ ] #73 - Integration & Polish (parallel: false)
+
+Total tasks: 9
+Parallel tasks: 7
+Sequential tasks: 2
+Estimated total effort: 7 weeks
 
 This epic provides a comprehensive pathway to implement the complex CP progression systems while maintaining code quality, performance, and the authentic cultivation game experience that players expect.
