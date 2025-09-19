@@ -419,9 +419,120 @@ class SkillSystem {
      * @param {string[]} loadout - Current skill loadout
      */
     _calculateSynergies(loadout) {
-        // This will be implemented when synergy data is available
-        // For now, just placeholder for the framework
         this.activeEffects.synergies.clear();
+
+        if (!this.skillManager.skillSynergies || loadout.length < 2) {
+            return;
+        }
+
+        try {
+            // Check each synergy definition
+            for (const [synergyId, synergyData] of Object.entries(this.skillManager.skillSynergies)) {
+                const requiredSkills = synergyData.requiredSkills || [];
+
+                // Check if all required skills are in loadout
+                const hasAllSkills = requiredSkills.every(skillId => loadout.includes(skillId));
+
+                if (!hasAllSkills) {
+                    continue;
+                }
+
+                // Check minimum level requirements
+                const meetsLevelRequirements = this._checkSynergyLevelRequirements(synergyData, requiredSkills);
+
+                if (!meetsLevelRequirements) {
+                    continue;
+                }
+
+                // Calculate synergy strength based on skill levels
+                const synergyStrength = this._calculateSynergyStrength(synergyData, requiredSkills);
+
+                // Apply synergy effects
+                const synergyEffects = this._applySynergyMultiplier(synergyData.effects, synergyStrength);
+
+                this.activeEffects.synergies.set(synergyId, {
+                    ...synergyData,
+                    strength: synergyStrength,
+                    effects: synergyEffects,
+                    activeSkills: requiredSkills.filter(skillId => loadout.includes(skillId))
+                });
+
+                console.log(`SkillSystem: Activated synergy '${synergyData.name}' with strength ${synergyStrength.toFixed(2)}`);
+            }
+
+        } catch (error) {
+            console.error('SkillSystem: Synergy calculation failed:', error);
+        }
+    }
+
+    /**
+     * Check if synergy level requirements are met
+     * @param {Object} synergyData - Synergy definition
+     * @param {string[]} requiredSkills - Required skill IDs
+     * @returns {boolean} Whether level requirements are met
+     */
+    _checkSynergyLevelRequirements(synergyData, requiredSkills) {
+        if (!synergyData.minLevels) {
+            return true;
+        }
+
+        for (const skillId of requiredSkills) {
+            const requiredLevel = synergyData.minLevels[skillId] || 1;
+            const actualLevel = this.skillManager._getSkillLevel(skillId);
+
+            if (actualLevel < requiredLevel) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Calculate synergy strength based on skill levels
+     * @param {Object} synergyData - Synergy definition
+     * @param {string[]} requiredSkills - Required skill IDs
+     * @returns {number} Synergy strength multiplier
+     */
+    _calculateSynergyStrength(synergyData, requiredSkills) {
+        let totalLevels = 0;
+        let maxPossibleLevels = 0;
+
+        for (const skillId of requiredSkills) {
+            const skillLevel = this.skillManager._getSkillLevel(skillId);
+            const skillDef = this.skillManager.skillDefinitions.get(skillId);
+
+            totalLevels += skillLevel;
+            maxPossibleLevels += skillDef ? skillDef.maxLevel : 10;
+        }
+
+        // Base strength is 1.0, with bonus based on skill levels
+        const levelRatio = totalLevels / maxPossibleLevels;
+        return 1.0 + (levelRatio * 0.5); // Up to 50% bonus at max levels
+    }
+
+    /**
+     * Apply synergy strength multiplier to effects
+     * @param {Object} effects - Base synergy effects
+     * @param {number} strength - Synergy strength multiplier
+     * @returns {Object} Scaled synergy effects
+     */
+    _applySynergyMultiplier(effects, strength) {
+        const scaledEffects = {};
+
+        for (const [category, categoryEffects] of Object.entries(effects)) {
+            scaledEffects[category] = {};
+
+            for (const [effectType, value] of Object.entries(categoryEffects)) {
+                if (typeof value === 'number') {
+                    scaledEffects[category][effectType] = value * strength;
+                } else {
+                    scaledEffects[category][effectType] = value;
+                }
+            }
+        }
+
+        return scaledEffects;
     }
 
     /**

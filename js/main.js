@@ -411,6 +411,8 @@ class IdleCultivationGame {
                 return {
                     name: 'Skills Module',
                     skillIntegration: null,
+                    skillTreeComponent: null,
+                    skillDetailModal: null,
                     init: async () => {
                         console.log('Skills Module initializing...');
 
@@ -420,6 +422,9 @@ class IdleCultivationGame {
                         // Initialize the skill system
                         await this.skillIntegration.initialize(context.gameState, context.eventManager);
 
+                        // Initialize UI components
+                        await this._initializeSkillsUI(context);
+
                         console.log('Skills Module initialized');
                     },
                     update: (deltaTime) => {
@@ -427,10 +432,57 @@ class IdleCultivationGame {
                         if (this.skillIntegration) {
                             this.skillIntegration.update(deltaTime);
                         }
+
+                        // Update UI components
+                        if (this.skillTreeComponent) {
+                            this.skillTreeComponent.update(deltaTime);
+                        }
                     },
                     shutdown: () => {
+                        if (this.skillTreeComponent) {
+                            this.skillTreeComponent.shutdown();
+                        }
+                        if (this.skillDetailModal) {
+                            this.skillDetailModal.shutdown();
+                        }
                         if (this.skillIntegration) {
                             this.skillIntegration.shutdown();
+                        }
+                    },
+                    async _initializeSkillsUI(context) {
+                        try {
+                            // Initialize skill tree component
+                            const skillsInterface = document.getElementById('skills-interface');
+                            if (skillsInterface) {
+                                this.skillTreeComponent = new SkillTreeComponent(
+                                    skillsInterface,
+                                    context.eventManager,
+                                    this.skillIntegration.getSkillSystem()
+                                );
+                                await this.skillTreeComponent.initialize();
+                            }
+
+                            // Initialize skill detail modal
+                            const modalContainer = document.createElement('div');
+                            modalContainer.id = 'skill-detail-modal-container';
+                            document.body.appendChild(modalContainer);
+
+                            this.skillDetailModal = new SkillDetailModal(
+                                modalContainer,
+                                context.eventManager,
+                                this.skillIntegration.getSkillSystem()
+                            );
+                            await this.skillDetailModal.initialize();
+
+                            // Set up cross-component communication
+                            context.eventManager.on('skillTree:skillSelected', (data) => {
+                                this.skillDetailModal.show(data.skillId);
+                            });
+
+                            console.log('Skills UI components initialized');
+
+                        } catch (error) {
+                            console.error('Skills Module: UI initialization failed:', error);
                         }
                     }
                 };
