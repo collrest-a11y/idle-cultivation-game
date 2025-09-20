@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integration Dashboard Test - Idle Cultivation Game</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/integration-dashboard.css">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e1a;
+            color: #ffffff;
+        }
+
+        /* CSS Variables for theming */
+        :root {
+            --primary-bg: #0a0e1a;
+            --secondary-bg: #1a1f2e;
+            --tertiary-bg: #252d42;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #4fc3f7;
+            --text-primary: #ffffff;
+            --text-secondary: #b8c5d6;
+            --text-muted: #6c7b7f;
+        }
+
+        .test-header {
+            padding: 1rem;
+            background: var(--secondary-bg);
+            border-bottom: 2px solid var(--accent-primary);
+            text-align: center;
+        }
+
+        .test-info {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--tertiary-bg);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .test-button {
+            padding: 0.5rem 1rem;
+            background: var(--accent-secondary);
+            border: none;
+            border-radius: 4px;
+            color: var(--primary-bg);
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s ease;
+        }
+
+        .test-button:hover {
+            background: var(--accent-primary);
+        }
+
+        #dashboard-container {
+            height: calc(100vh - 120px);
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <h1>Integration Dashboard & Monitoring Test</h1>
+        <div class="test-info">
+            This test demonstrates the Integration Dashboard component with real-time monitoring of cross-system integration health,
+            performance metrics, test results, error tracking, and event propagation across all 12 MMORPG systems.
+        </div>
+        <div class="test-controls">
+            <button class="test-button" onclick="initializeDashboard()">Initialize Dashboard</button>
+            <button class="test-button" onclick="simulateActivity()">Simulate Activity</button>
+            <button class="test-button" onclick="simulateError()">Simulate Error</button>
+            <button class="test-button" onclick="toggleTheme()">Toggle Theme</button>
+        </div>
+    </div>
+
+    <div id="dashboard-container"></div>
+
+    <!-- Core Dependencies -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/PerformanceMonitor.js"></script>
+    <script src="js/core/IntegrationMonitor.js"></script>
+    <script src="js/ui/BaseComponent.js"></script>
+    <script src="js/ui/UIManager.js"></script>
+    <script src="js/ui/components/IntegrationDashboard.js"></script>
+
+    <script>
+        // Test setup
+        let dashboard = null;
+        let eventManager = null;
+        let performanceMonitor = null;
+        let integrationMonitor = null;
+        let simulationIntervals = [];
+
+        // Initialize test environment
+        async function initializeTestEnvironment() {
+            try {
+                console.log('Initializing test environment...');
+
+                // Initialize core systems
+                eventManager = new EventManager();
+                eventManager.setDebugMode(true);
+
+                performanceMonitor = new PerformanceMonitor();
+                performanceMonitor.initialize({}, eventManager);
+
+                // Initialize UI Manager
+                const uiManager = new UIManager();
+                await uiManager.init({
+                    eventManager,
+                    enablePerformanceMonitoring: true
+                });
+
+                console.log('Test environment initialized successfully');
+                return true;
+
+            } catch (error) {
+                console.error('Failed to initialize test environment:', error);
+                return false;
+            }
+        }
+
+        // Initialize the dashboard
+        async function initializeDashboard() {
+            const container = document.getElementById('dashboard-container');
+            if (!container) {
+                console.error('Dashboard container not found');
+                return;
+            }
+
+            if (dashboard) {
+                dashboard.destroy();
+            }
+
+            try {
+                console.log('Initializing Integration Dashboard...');
+
+                // Create dashboard instance
+                dashboard = new IntegrationDashboard(container, {
+                    eventManager,
+                    performanceMonitor,
+                    updateFrequency: 2000, // 2 second updates for demo
+                    autoUpdate: true
+                });
+
+                // Mount the dashboard
+                dashboard.mount();
+
+                console.log('Integration Dashboard initialized successfully');
+
+                // Start simulation after a short delay
+                setTimeout(() => {
+                    startContinuousSimulation();
+                }, 1000);
+
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+            }
+        }
+
+        // Start continuous simulation for demo purposes
+        function startContinuousSimulation() {
+            // Simulate performance metrics updates
+            const perfInterval = setInterval(() => {
+                if (performanceMonitor) {
+                    // Simulate frame timing
+                    performanceMonitor.startFrame();
+                    setTimeout(() => {
+                        performanceMonitor.endFrame();
+                    }, Math.random() * 20 + 10); // 10-30ms frame time
+
+                    // Record memory usage
+                    performanceMonitor.recordMemoryUsage();
+
+                    // Track some operations
+                    performanceMonitor.trackOperation('test-operation', () => {
+                        // Simulate work
+                        const start = performance.now();
+                        while (performance.now() - start < Math.random() * 15) {
+                            // Simulate processing
+                        }
+                    });
+                }
+            }, 500);
+
+            // Simulate system events
+            const eventInterval = setInterval(() => {
+                if (eventManager) {
+                    const eventTypes = [
+                        'cultivation:progress',
+                        'combat:victory',
+                        'sect:promotion',
+                        'quest:completion',
+                        'scripture:discovery',
+                        'skill:levelUp'
+                    ];
+
+                    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+                    eventManager.emit(eventType, {
+                        source: eventType.split(':')[0],
+                        value: Math.random() * 100,
+                        timestamp: Date.now()
+                    });
+                }
+            }, 1000);
+
+            // Simulate integration health checks
+            const healthInterval = setInterval(() => {
+                if (eventManager) {
+                    const systems = ['cultivation', 'scripture', 'combat', 'sect', 'quest'];
+                    const systemData = systems.map(system => ({
+                        id: system,
+                        name: `${system.charAt(0).toUpperCase() + system.slice(1)} System`,
+                        health: Math.random() * 40 + 60, // 60-100% health
+                        status: Math.random() > 0.8 ? 'warning' : 'healthy',
+                        lastCheck: Date.now(),
+                        dependencies: [],
+                        metrics: {
+                            responseTime: Math.random() * 50 + 10,
+                            errorRate: Math.random() * 0.1,
+                            availability: Math.random() * 10 + 90
+                        },
+                        issues: Math.random() > 0.7 ? ['Minor performance issue'] : []
+                    }));
+
+                    eventManager.emit('integration:healthUpdate', {
+                        systems: systemData,
+                        overallHealth: systemData.reduce((sum, s) => sum + s.health, 0) / systemData.length,
+                        timestamp: Date.now()
+                    });
+                }
+            }, 5000);
+
+            simulationIntervals.push(perfInterval, eventInterval, healthInterval);
+        }
+
+        // Simulate random activity
+        function simulateActivity() {
+            if (!eventManager) return;
+
+            const activities = [
+                () => eventManager.emit('cultivation:breakthrough', { level: Math.floor(Math.random() * 10) + 1 }),
+                () => eventManager.emit('combat:duel', { opponent: 'Test Cultivator', result: 'victory' }),
+                () => eventManager.emit('sect:mission', { type: 'resource_gathering', success: true }),
+                () => eventManager.emit('quest:progress', { questId: 'test-quest', progress: Math.random() }),
+                () => eventManager.emit('integration:testResult', {
+                    name: 'Cross-system Test',
+                    status: Math.random() > 0.2 ? 'passed' : 'failed',
+                    duration: Math.random() * 1000 + 100,
+                    lastRun: Date.now()
+                })
+            ];
+
+            const activity = activities[Math.floor(Math.random() * activities.length)];
+            activity();
+
+            console.log('Simulated random activity');
+        }
+
+        // Simulate error conditions
+        function simulateError() {
+            if (!eventManager) return;
+
+            const errors = [
+                {
+                    category: 'integration',
+                    data: { message: 'Cross-system communication failure', system: 'cultivation' },
+                    severity: 'critical'
+                },
+                {
+                    category: 'performance',
+                    data: { type: 'fps', value: 25, threshold: 60 },
+                    severity: 'warning'
+                },
+                {
+                    category: 'validation',
+                    data: { message: 'Data validation failed', field: 'cultivation_progress' },
+                    severity: 'warning'
+                }
+            ];
+
+            const error = errors[Math.floor(Math.random() * errors.length)];
+            eventManager.emit('integration:error', error);
+
+            console.log('Simulated error:', error);
+        }
+
+        // Toggle between light and dark themes
+        function toggleTheme() {
+            const root = document.documentElement;
+            const isDark = getComputedStyle(root).getPropertyValue('--primary-bg').trim() === '#0a0e1a';
+
+            if (isDark) {
+                // Switch to light theme
+                root.style.setProperty('--primary-bg', '#f8fafc');
+                root.style.setProperty('--secondary-bg', '#edf2f7');
+                root.style.setProperty('--tertiary-bg', '#e2e8f0');
+                root.style.setProperty('--text-primary', '#1a202c');
+                root.style.setProperty('--text-secondary', '#4a5568');
+                root.style.setProperty('--text-muted', '#718096');
+                document.body.style.background = '#f8fafc';
+                document.body.style.color = '#1a202c';
+            } else {
+                // Switch to dark theme
+                root.style.setProperty('--primary-bg', '#0a0e1a');
+                root.style.setProperty('--secondary-bg', '#1a1f2e');
+                root.style.setProperty('--tertiary-bg', '#252d42');
+                root.style.setProperty('--text-primary', '#ffffff');
+                root.style.setProperty('--text-secondary', '#b8c5d6');
+                root.style.setProperty('--text-muted', '#6c7b7f');
+                document.body.style.background = '#0a0e1a';
+                document.body.style.color = '#ffffff';
+            }
+
+            console.log('Theme toggled');
+        }
+
+        // Cleanup function
+        function cleanup() {
+            simulationIntervals.forEach(interval => clearInterval(interval));
+            simulationIntervals = [];
+
+            if (dashboard) {
+                dashboard.destroy();
+                dashboard = null;
+            }
+
+            if (performanceMonitor) {
+                performanceMonitor.stop();
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            const initialized = await initializeTestEnvironment();
+            if (initialized) {
+                console.log('Test page ready. Click "Initialize Dashboard" to start.');
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', cleanup);
+
+        // Expose functions globally for demo buttons
+        window.initializeDashboard = initializeDashboard;
+        window.simulateActivity = simulateActivity;
+        window.simulateError = simulateError;
+        window.toggleTheme = toggleTheme;
+    </script>
+</body>
+</html>
