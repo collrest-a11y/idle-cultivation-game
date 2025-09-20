@@ -132,7 +132,7 @@ const COMBAT_FORMULAS = {
         // Stage bonus
         const stageMultiplier = 1 + (stage * 0.05);
 
-        return Math.floor(basePower * realmMultiplier * stageMultiplier);
+        return Math.round(basePower * realmMultiplier * stageMultiplier);
     },
 
     // Scripture power contribution
@@ -155,7 +155,7 @@ const COMBAT_FORMULAS = {
             }
         });
 
-        return Math.floor(scripturePower);
+        return Math.round(scripturePower);
     },
 
     // Equipment power contribution
@@ -171,7 +171,7 @@ const COMBAT_FORMULAS = {
             }
         });
 
-        return Math.floor(equipPower);
+        return Math.round(equipPower);
     },
 
     // Total combat power calculation
@@ -190,7 +190,7 @@ const COMBAT_FORMULAS = {
             total += modifiers.flatBonus;
         }
 
-        return Math.floor(total);
+        return Math.round(total);
     },
 
     // Health calculation
@@ -204,7 +204,7 @@ const COMBAT_FORMULAS = {
         }
 
         const stageBonus = 1 + (stage * 0.03);
-        let total = Math.floor(baseHealth * realmMultiplier * stageBonus);
+        let total = Math.round(baseHealth * realmMultiplier * stageBonus);
 
         if (modifiers.healthMultiplier) {
             total *= modifiers.healthMultiplier;
@@ -227,7 +227,7 @@ const COMBAT_FORMULAS = {
         }
 
         const stageBonus = 1 + (stage * 0.04);
-        let total = Math.floor(baseQi * realmMultiplier * stageBonus);
+        let total = Math.round(baseQi * realmMultiplier * stageBonus);
 
         if (modifiers.qiMultiplier) {
             total *= modifiers.qiMultiplier;
@@ -260,10 +260,10 @@ const COMBAT_FORMULAS = {
             baseDamage += modifiers.flatDamageBonus;
         }
 
-        // Add some randomness (±15%)
-        const randomFactor = 0.85 + (Math.random() * 0.3);
+        // Reduced randomness for better accuracy (±5%)
+        const randomFactor = 0.95 + (Math.random() * 0.1);
 
-        return Math.floor(baseDamage * randomFactor);
+        return Math.round(baseDamage * randomFactor);
     },
 
     // Initiative calculation (determines turn order)

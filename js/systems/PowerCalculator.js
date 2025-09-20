@@ -274,7 +274,7 @@ class PowerCalculator {
             }
         }
 
-        // Calculate total
+        // Calculate total with improved precision
         let total = basePower + scripturePower + equipmentPower + progressionPower + modifierPower;
 
         // Apply percentage modifiers
@@ -282,7 +282,8 @@ class PowerCalculator {
             total *= modifiers.powerMultiplier;
         }
 
-        total = Math.floor(total);
+        // Use proper rounding instead of floor for better accuracy
+        total = Math.round(total);
 
         return {
             total: total,
@@ -475,7 +476,7 @@ class PowerCalculator {
 
                 let power = mountData.basePower;
                 power += level * mountData.powerPerLevel;
-                power += Math.floor(experience / 100) * mountData.experienceBonus;
+                power += Math.round(experience / 100) * mountData.experienceBonus;
                 totalPower += power;
             }
         }
@@ -491,7 +492,7 @@ class PowerCalculator {
 
                 // Diminishing returns for higher levels
                 if (level > 10) {
-                    const diminishingBonus = Math.floor((level - 10) * wingData.powerPerLevel * 0.5);
+                    const diminishingBonus = Math.round((level - 10) * wingData.powerPerLevel * 0.5);
                     power += diminishingBonus;
                 }
                 totalPower += power;
@@ -545,7 +546,7 @@ class PowerCalculator {
                     if (channelData) {
                         let power = channelData.basePower;
                         power += (channel.level - 1) * channelData.powerPerLevel;
-                        power += Math.floor(channel.purity / 10) * channelData.purityBonus;
+                        power += Math.round(channel.purity / 10) * channelData.purityBonus;
                         totalPower += power;
                     }
                 }
@@ -570,7 +571,7 @@ class PowerCalculator {
                     if (centerData) {
                         let power = centerData.basePower;
                         power += (center.level - 1) * centerData.powerPerLevel;
-                        power += Math.floor(center.purity / 10) * centerData.purityBonus;
+                        power += Math.round(center.purity / 10) * centerData.purityBonus;
                         power *= center.density; // Density multiplier
                         totalPower += power;
                     }
@@ -626,12 +627,12 @@ class PowerCalculator {
                         bonusPercent += constellationData.fullSetBonus || 50;
                     }
 
-                    totalPower += Math.floor(totalPower * bonusPercent / 100);
+                    totalPower += Math.round(totalPower * bonusPercent / 100);
                 }
             }
         }
 
-        return Math.floor(totalPower);
+        return Math.round(totalPower);
     }
 
     /**
@@ -700,9 +701,9 @@ class PowerCalculator {
 
         let power = mountData.basePower;
         power += level * mountData.powerPerLevel;
-        power += Math.floor(experience / 100) * mountData.experienceBonus;
+        power += Math.round(experience / 100) * mountData.experienceBonus;
 
-        return Math.floor(power);
+        return Math.round(power);
     }
 
     _calculateWingsPower(wings) {
@@ -717,11 +718,11 @@ class PowerCalculator {
         power += (level - 1) * wingData.powerPerLevel;
 
         if (level > 10) {
-            const diminishingBonus = Math.floor((level - 10) * wingData.powerPerLevel * 0.5);
+            const diminishingBonus = Math.round((level - 10) * wingData.powerPerLevel * 0.5);
             power += diminishingBonus;
         }
 
-        return Math.floor(power);
+        return Math.round(power);
     }
 
     _calculateAccessoriesPower(accessories) {
@@ -742,7 +743,7 @@ class PowerCalculator {
             }
         });
 
-        return Math.floor(totalPower);
+        return Math.round(totalPower);
     }
 
     _calculateRunesPower(runes) {
@@ -765,7 +766,7 @@ class PowerCalculator {
             }
         });
 
-        return Math.floor(totalPower);
+        return Math.round(totalPower);
     }
 
     _calculateMeridiansPower(meridians) {
@@ -777,7 +778,7 @@ class PowerCalculator {
                 if (channelData) {
                     let power = channelData.basePower;
                     power += (channel.level - 1) * channelData.powerPerLevel;
-                    power += Math.floor(channel.purity / 10) * channelData.purityBonus;
+                    power += Math.round(channel.purity / 10) * channelData.purityBonus;
                     totalPower += power;
                 }
             }
@@ -792,7 +793,7 @@ class PowerCalculator {
             }
         });
 
-        return Math.floor(totalPower);
+        return Math.round(totalPower);
     }
 
     _calculateDantianPower(dantian) {
@@ -804,7 +805,7 @@ class PowerCalculator {
                 if (centerData) {
                     let power = centerData.basePower;
                     power += (center.level - 1) * centerData.powerPerLevel;
-                    power += Math.floor(center.purity / 10) * centerData.purityBonus;
+                    power += Math.round(center.purity / 10) * centerData.purityBonus;
                     power *= center.density;
                     totalPower += power;
                 }
@@ -822,7 +823,7 @@ class PowerCalculator {
             });
         });
 
-        return Math.floor(totalPower);
+        return Math.round(totalPower);
     }
 
     _calculateSoulPower(soul) {
@@ -858,11 +859,11 @@ class PowerCalculator {
                     bonusPercent += constellationData.fullSetBonus || 50;
                 }
 
-                totalPower += Math.floor(totalPower * bonusPercent / 100);
+                totalPower += Math.round(totalPower * bonusPercent / 100);
             }
         }
 
-        return Math.floor(totalPower);
+        return Math.round(totalPower);
     }
 
     // Data accessor methods - these would normally access the respective system classes
@@ -889,7 +890,7 @@ class PowerCalculator {
         while (totalExp + expRequired <= experience) {
             totalExp += expRequired;
             level++;
-            expRequired = Math.floor(expRequired * 1.5);
+            expRequired = Math.round(expRequired * 1.5);
         }
 
         return level;

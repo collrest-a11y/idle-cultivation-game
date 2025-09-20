@@ -47,6 +47,9 @@ class GameState {
         this._previousState = this._deepClone(this._state);
 
         GameState.instance = this;
+
+        // Initialize comprehensive validation rules for security
+        this._initializeValidationRules();
     }
 
     /**
@@ -864,6 +867,199 @@ class GameState {
 
         current[keys[keys.length - 1]] = value;
         return result;
+    }
+
+    /**
+     * Initialize comprehensive validation rules for input security
+     * @private
+     */
+    _initializeValidationRules() {
+        // Player validation rules
+        this.addValidation('player.jade',
+            value => typeof value === 'number' && value >= 0 && value <= 1e12 && !isNaN(value),
+            'Jade must be a valid non-negative number under 1 trillion');
+
+        this.addValidation('player.spiritCrystals',
+            value => typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value),
+            'Spirit crystals must be a valid non-negative integer under 1 billion');
+
+        this.addValidation('player.name',
+            value => typeof value === 'string' && value.length >= 1 && value.length <= 50 && /^[a-zA-Z0-9_\-\s]+$/.test(value),
+            'Player name must be 1-50 alphanumeric characters, underscores, hyphens, or spaces');
+
+        // Cultivation validation rules
+        this.addValidation('cultivation.qi.level',
+            value => typeof value === 'number' && value >= 0 && value <= 10000 && Number.isInteger(value),
+            'Qi level must be a valid integer between 0 and 10000');
+
+        this.addValidation('cultivation.body.level',
+            value => typeof value === 'number' && value >= 0 && value <= 10000 && Number.isInteger(value),
+            'Body level must be a valid integer between 0 and 10000');
+
+        this.addValidation('cultivation.realm',
+            value => typeof value === 'string' && value.length >= 1 && value.length <= 100 && /^[a-zA-Z\s]+$/.test(value),
+            'Cultivation realm must be a valid string with only letters and spaces');
+
+        this.addValidation('cultivation.stage',
+            value => typeof value === 'number' && value >= 1 && value <= 100 && Number.isInteger(value),
+            'Cultivation stage must be a valid integer between 1 and 100');
+
+        // Equipment validation rules
+        this.addValidation('loadout.weapon.level',
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 1000 && Number.isInteger(value)),
+            'Weapon level must be null or a valid integer between 0 and 1000');
+
+        this.addValidation('loadout.armor.level',
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 1000 && Number.isInteger(value)),
+            'Armor level must be null or a valid integer between 0 and 1000');
+
+        // Scripture validation rules
+        this.addValidation('scriptures.collection',
+            value => Array.isArray(value) && value.length <= 1000,
+            'Scripture collection must be an array with maximum 1000 entries');
+
+        // Combat validation rules
+        this.addValidation('combat.wins',
+            value => typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value),
+            'Combat wins must be a valid non-negative integer under 1 billion');
+
+        this.addValidation('combat.losses',
+            value => typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value),
+            'Combat losses must be a valid non-negative integer under 1 billion');
+
+        // Quest validation rules
+        this.addValidation('quests.completed',
+            value => Array.isArray(value) && value.length <= 10000,
+            'Completed quests must be an array with maximum 10000 entries');
+
+        // Achievement validation rules
+        this.addValidation('achievements.unlocked',
+            value => Array.isArray(value) && value.length <= 1000,
+            'Unlocked achievements must be an array with maximum 1000 entries');
+
+        // Time-based validation rules
+        this.addValidation('lastSaveTime',
+            value => typeof value === 'number' && value >= 0 && value <= Date.now() + 86400000,
+            'Last save time must be a valid timestamp not more than 24 hours in the future');
+
+        this.addValidation('lastOnlineTime',
+            value => typeof value === 'number' && value >= 0 && value <= Date.now() + 86400000,
+            'Last online time must be a valid timestamp not more than 24 hours in the future');
+
+        // CP Progression System validation rules
+        this.addValidation('mounts.active',
+            value => value == null || (typeof value === 'string' && value.length >= 1 && value.length <= 50 && /^[a-zA-Z0-9_]+$/.test(value)),
+            'Active mount must be null or a valid identifier string');
+
+        this.addValidation('wings.equipped',
+            value => value == null || (typeof value === 'string' && value.length >= 1 && value.length <= 50 && /^[a-zA-Z0-9_]+$/.test(value)),
+            'Equipped wings must be null or a valid identifier string');
+
+        console.log('GameState: Initialized comprehensive validation rules for enhanced security');
+    }
+
+    /**
+     * Sanitize input value to prevent malicious data
+     * @param {*} value - The value to sanitize
+     * @param {string} type - Expected type ('string', 'number', 'integer', 'array', 'object')
+     * @returns {*} Sanitized value
+     * @private
+     */
+    _sanitizeInput(value, type) {
+        if (value == null) {
+            return null;
+        }
+
+        switch (type) {
+            case 'string':
+                if (typeof value !== 'string') {
+                    return String(value).substring(0, 1000); // Limit length
+                }
+                // Remove potentially dangerous characters
+                return value.replace(/[<>\"'&]/g, '').substring(0, 1000);
+
+            case 'number':
+                const num = Number(value);
+                if (isNaN(num) || !isFinite(num)) {
+                    return 0;
+                }
+                // Clamp to reasonable bounds
+                return Math.max(-1e12, Math.min(1e12, num));
+
+            case 'integer':
+                const int = parseInt(value);
+                if (isNaN(int) || !isFinite(int)) {
+                    return 0;
+                }
+                return Math.max(-1e9, Math.min(1e9, int));
+
+            case 'array':
+                if (!Array.isArray(value)) {
+                    return [];
+                }
+                // Limit array size
+                return value.slice(0, 10000);
+
+            case 'object':
+                if (typeof value !== 'object' || Array.isArray(value)) {
+                    return {};
+                }
+                return value;
+
+            default:
+                return value;
+        }
+    }
+
+    /**
+     * Enhanced update method with input sanitization
+     * @param {Object|Function} updates - Object with updates or function that returns updates
+     * @param {Object} options - Optional configuration
+     */
+    updateSecure(updates, options = {}) {
+        const config = {
+            validate: true,
+            emit: true,
+            source: 'secure_update',
+            sanitize: true,
+            ...options
+        };
+
+        // Sanitize updates if requested
+        if (config.sanitize && typeof updates === 'object' && updates !== null) {
+            updates = this._sanitizeUpdates(updates);
+        }
+
+        // Use regular update method with enhanced validation
+        this.update(updates, config);
+    }
+
+    /**
+     * Sanitize an updates object recursively
+     * @param {Object} updates - Updates object to sanitize
+     * @returns {Object} Sanitized updates
+     * @private
+     */
+    _sanitizeUpdates(updates) {
+        const sanitized = {};
+
+        for (const [key, value] of Object.entries(updates)) {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                sanitized[key] = this._sanitizeUpdates(value);
+            } else if (Array.isArray(value)) {
+                sanitized[key] = value.slice(0, 10000).map(item =>
+                    typeof item === 'string' ? this._sanitizeInput(item, 'string') : item
+                );
+            } else if (typeof value === 'string') {
+                sanitized[key] = this._sanitizeInput(value, 'string');
+            } else if (typeof value === 'number') {
+                sanitized[key] = this._sanitizeInput(value, 'number');
+            } else {
+                sanitized[key] = value;
+            }
+        }
+
+        return sanitized;
     }
 
     _validateState(state) {
