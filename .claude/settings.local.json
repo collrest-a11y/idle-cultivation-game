@@ -23,7 +23,10 @@
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",
       "Bash(gh api:*)",
-      "Bash(gh issue edit:*)"
+      "Bash(gh issue edit:*)",
+      "Bash(gh issue comment:*)",
+      "WebFetch(domain:playwright.dev)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []

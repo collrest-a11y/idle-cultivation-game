@@ -46,6 +46,9 @@ class GameState {
         this._state = this._getDefaultState();
         this._previousState = this._deepClone(this._state);
 
+        // Set up validation rules for skills data
+        this._setupSkillsValidation();
+
         GameState.instance = this;
     }
 
@@ -479,6 +482,64 @@ class GameState {
 
     // Private methods
 
+    /**
+     * Set up validation rules for skills data
+     */
+    _setupSkillsValidation() {
+        // Validate skills object structure
+        this.addValidation('skills', (skills) => {
+            return skills && typeof skills === 'object' &&
+                   skills.hasOwnProperty('unlocked') &&
+                   skills.hasOwnProperty('levels') &&
+                   skills.hasOwnProperty('loadout') &&
+                   skills.hasOwnProperty('skillPoints') &&
+                   skills.hasOwnProperty('fragments') &&
+                   skills.hasOwnProperty('mastery');
+        }, 'Skills object must have required properties');
+
+        // Validate unlocked skills
+        this.addValidation('skills.unlocked', (unlocked) => {
+            return typeof unlocked === 'object' && unlocked !== null;
+        }, 'Unlocked skills must be an object');
+
+        // Validate skill levels
+        this.addValidation('skills.levels', (levels) => {
+            if (typeof levels !== 'object' || levels === null) return false;
+            // All levels must be positive numbers
+            return Object.values(levels).every(level =>
+                typeof level === 'number' && level >= 0 && Number.isInteger(level)
+            );
+        }, 'Skill levels must be non-negative integers');
+
+        // Validate loadout
+        this.addValidation('skills.loadout', (loadout) => {
+            return Array.isArray(loadout) &&
+                   loadout.every(skillId => typeof skillId === 'string') &&
+                   loadout.length <= 10; // Max reasonable loadout size
+        }, 'Loadout must be an array of skill ID strings with reasonable size');
+
+        // Validate skill points and fragments
+        this.addValidation('skills.skillPoints', (points) => {
+            return typeof points === 'number' && points >= 0 && Number.isInteger(points);
+        }, 'Skill points must be a non-negative integer');
+
+        this.addValidation('skills.fragments', (fragments) => {
+            return typeof fragments === 'number' && fragments >= 0 && Number.isInteger(fragments);
+        }, 'Fragments must be a non-negative integer');
+
+        // Validate mastery object
+        this.addValidation('skills.mastery', (mastery) => {
+            return typeof mastery === 'object' && mastery !== null;
+        }, 'Mastery must be an object');
+
+        // Validate max loadout size
+        this.addValidation('skills.maxLoadoutSize', (size) => {
+            return typeof size === 'number' && size > 0 && size <= 10 && Number.isInteger(size);
+        }, 'Max loadout size must be a positive integer between 1 and 10');
+
+        console.log('GameState: Skills validation rules setup complete');
+    }
+
     _getDefaultState() {
         return {
             player: {
@@ -803,6 +864,33 @@ class GameState {
                 sound: true,
                 theme: 'dark'
             },
+            // Skills System Data
+            skills: {
+                unlocked: {},
+                levels: {},
+                loadout: [],
+                skillPoints: 0,
+                fragments: 0,
+                mastery: {},
+                maxLoadoutSize: 6,
+                totalExperience: 0,
+                unlockedCategories: [],
+                lastUnlockTime: 0,
+                prestigeLevel: 0,
+                prestigePoints: 0
+            },
+            skillsStats: {
+                totalSkillsUnlocked: 0,
+                totalSkillLevels: 0,
+                totalFragmentsSpent: 0,
+                totalSkillPointsSpent: 0,
+                masteryPointsEarned: 0,
+                loadoutChanges: 0,
+                skillsUsed: {},
+                averageSkillLevel: 0,
+                favoriteSkillCategory: null,
+                perfectSkillUps: 0
+            },
             meta: {
                 createdAt: Date.now(),
                 lastPlayed: Date.now(),
@@ -926,6 +1014,9 @@ class GameState {
 
     async _migrateState(state, version) {
         try {
+            // Apply skills system migration first
+            state = this._migrateSkillsData(state, version);
+
             // Use MigrationManager if available
             if (window.migrationManager) {
                 const currentVersion = this._getSaveVersion();
@@ -946,6 +1037,73 @@ class GameState {
             console.error('GameState: Migration error:', error);
             return state;
         }
+    }
+
+    /**
+     * Migrate skills data from older versions
+     * @param {Object} state - Game state to migrate
+     * @param {string} version - Version being migrated from
+     * @returns {Object} Migrated state
+     */
+    _migrateSkillsData(state, version) {
+        // Ensure skills structure exists
+        if (!state.skills) {
+            console.log('GameState: Adding missing skills structure');
+            state.skills = this._getDefaultState().skills;
+        }
+
+        // Migrate from placeholder structure to full structure
+        if (state.skills && !state.skills.hasOwnProperty('maxLoadoutSize')) {
+            console.log('GameState: Migrating skills to extended structure');
+
+            const defaultSkills = this._getDefaultState().skills;
+            const defaultStats = this._getDefaultState().skillsStats;
+
+            // Preserve existing data, add missing properties
+            state.skills = {
+                ...defaultSkills,
+                ...state.skills
+            };
+
+            // Add skills stats if missing
+            if (!state.skillsStats) {
+                state.skillsStats = defaultStats;
+            }
+        }
+
+        // Ensure unlocked skills are properly formatted
+        if (state.skills.unlocked && typeof state.skills.unlocked === 'object') {
+            for (const [skillId, unlockData] of Object.entries(state.skills.unlocked)) {
+                // Convert simple boolean unlocks to proper unlock data
+                if (typeof unlockData === 'boolean' && unlockData === true) {
+                    state.skills.unlocked[skillId] = {
+                        unlockedAt: Date.now(),
+                        unlockedBy: 'migration'
+                    };
+                }
+            }
+        }
+
+        // Ensure levels are integers
+        if (state.skills.levels && typeof state.skills.levels === 'object') {
+            for (const [skillId, level] of Object.entries(state.skills.levels)) {
+                if (typeof level === 'number' && !Number.isInteger(level)) {
+                    state.skills.levels[skillId] = Math.floor(level);
+                }
+            }
+        }
+
+        // Ensure loadout is a valid array
+        if (!Array.isArray(state.skills.loadout)) {
+            state.skills.loadout = [];
+        }
+
+        // Ensure mastery is an object
+        if (!state.skills.mastery || typeof state.skills.mastery !== 'object') {
+            state.skills.mastery = {};
+        }
+
+        return state;
     }
 
     /**
