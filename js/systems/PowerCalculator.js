@@ -274,8 +274,22 @@ class PowerCalculator {
             }
         }
 
-        // Calculate total with improved precision
-        let total = basePower + scripturePower + equipmentPower + progressionPower + modifierPower;
+        // Calculate total with balanced progression and improved precision
+        let total = basePower + scripturePower + equipmentPower;
+
+        // Apply CP progression system cap (50% maximum contribution)
+        let cappedProgressionPower = progressionPower;
+        const basePowerSum = basePower + scripturePower + equipmentPower;
+        const maxProgressionPower = basePowerSum * 1.0; // 100% of base power as maximum
+
+        if (progressionPower > maxProgressionPower) {
+            // Apply diminishing returns for excessive CP progression
+            const excessPower = progressionPower - maxProgressionPower;
+            const diminishedExcess = Math.log(1 + excessPower / 100) * 50; // Logarithmic diminishing
+            cappedProgressionPower = maxProgressionPower + diminishedExcess;
+        }
+
+        total += cappedProgressionPower + modifierPower;
 
         // Apply percentage modifiers
         if (modifiers.powerMultiplier) {
@@ -290,7 +304,7 @@ class PowerCalculator {
             base: basePower,
             scripture: scripturePower,
             equipment: equipmentPower,
-            progression: progressionPower,
+            progression: cappedProgressionPower, // Use capped value for accurate reporting
             modifiers: modifierPower,
             multiplier: modifiers.powerMultiplier || 1.0,
             breakdown: {
@@ -299,6 +313,14 @@ class PowerCalculator {
                 equipment: equipment,
                 progression: this._getProgressionBreakdown(entity),
                 modifiers: modifiers
+            },
+            // Balance monitoring data
+            balanceData: {
+                baseContribution: (basePower + scripturePower + equipmentPower) / total,
+                progressionContribution: cappedProgressionPower / total,
+                progressionCapped: progressionPower > maxProgressionPower,
+                rawProgressionPower: progressionPower,
+                cappedProgressionPower: cappedProgressionPower
             }
         };
     }

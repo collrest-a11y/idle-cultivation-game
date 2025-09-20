@@ -121,16 +121,25 @@ const COMBAT_FORMULAS = {
         const bodyPower = bodyLevel * 8;
         const basePower = qiPower + bodyPower;
 
-        // Realm multiplier
+        // Balanced realm multiplier with logarithmic scaling
         let realmMultiplier = 1.0;
         if (realmData) {
             const qiCapacity = realmData.benefits.qiCapacityMultiplier || 1.0;
             const bodyStrength = realmData.benefits.bodyStrengthMultiplier || 1.0;
-            realmMultiplier = (qiCapacity + bodyStrength) / 2;
+            const rawMultiplier = (qiCapacity + bodyStrength) / 2;
+
+            // Apply logarithmic scaling to prevent exponential growth
+            if (rawMultiplier > 2.0) {
+                const excessMultiplier = rawMultiplier - 2.0;
+                const logScaling = Math.log(1 + excessMultiplier) + 1;
+                realmMultiplier = 1.0 + logScaling;
+            } else {
+                realmMultiplier = rawMultiplier;
+            }
         }
 
-        // Stage bonus
-        const stageMultiplier = 1 + (stage * 0.05);
+        // Balanced stage bonus (reduced from 5% to 3% per stage)
+        const stageMultiplier = 1 + (stage * 0.03);
 
         return Math.round(basePower * realmMultiplier * stageMultiplier);
     },
