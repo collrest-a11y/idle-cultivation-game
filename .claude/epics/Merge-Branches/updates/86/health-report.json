@@ -1,0 +1,175 @@
+{
+  "timestamp": "2025-09-20T17:07:05.802Z",
+  "healthScore": 72.72727272727273,
+  "results": {
+    "timestamp": 1758388025801,
+    "passed": 8,
+    "failed": 3,
+    "warnings": 5,
+    "checks": {
+      "GameState Integrity": {
+        "status": "error",
+        "message": "GameState not initialized",
+        "duration": 0,
+        "consecutiveFailures": 1
+      },
+      "EventManager Health": {
+        "status": "error",
+        "message": "EventManager not initialized",
+        "duration": 0,
+        "consecutiveFailures": 1
+      },
+      "UI Framework Health": {
+        "status": "error",
+        "message": "UI Framework not initialized",
+        "duration": 0,
+        "consecutiveFailures": 1
+      },
+      "Combat System Health": {
+        "status": "warning",
+        "message": "Issues: CombatSystem experiencing intermittent issues",
+        "details": {
+          "activeCalculations": 12,
+          "errorRate": 0.01332903561647838
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Quest System Health": {
+        "status": "healthy",
+        "message": "QuestSystem is healthy",
+        "details": {
+          "activeQuests": 13,
+          "completionRate": 0.959495672741717
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Power Calculator Health": {
+        "status": "healthy",
+        "message": "PowerCalculator is healthy",
+        "details": {
+          "responseTime": 1.2421557000729644,
+          "cacheHitRate": 0.8847867328545462
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Mount System Health": {
+        "status": "healthy",
+        "message": "MountSystem is healthy",
+        "details": {
+          "powerContribution": 0.1819265241881136,
+          "unlockStatus": true,
+          "processingTime": 2.9948502624141793
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Wing System Health": {
+        "status": "healthy",
+        "message": "WingSystem is healthy",
+        "details": {
+          "powerContribution": 0.2514646479435464,
+          "unlockStatus": true,
+          "processingTime": 1.0968894423015618
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Rune System Health": {
+        "status": "warning",
+        "message": "Issues: Processing time too slow",
+        "details": {
+          "powerContribution": 0.2635619659562427,
+          "unlockStatus": true,
+          "processingTime": 4.341943478743744
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Meridian System Health": {
+        "status": "healthy",
+        "message": "MeridianSystem is healthy",
+        "details": {
+          "powerContribution": 0.16013888507519464,
+          "unlockStatus": true,
+          "processingTime": 2.0142679148314766
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Dantian System Health": {
+        "status": "healthy",
+        "message": "DantianSystem is healthy",
+        "details": {
+          "powerContribution": 0.26256194286791124,
+          "unlockStatus": true,
+          "processingTime": 0.0007614494230134827
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Soul System Health": {
+        "status": "warning",
+        "message": "Issues: Processing time too slow",
+        "details": {
+          "powerContribution": 0.28992243438526044,
+          "unlockStatus": true,
+          "processingTime": 3.14984956730205
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Data Consistency Check": {
+        "status": "warning",
+        "message": "Issues: Power calculation mismatch: 13.49%",
+        "details": {
+          "powerDifference": 0.13488287312092842,
+          "resourceConsistency": true
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Performance Metrics Check": {
+        "status": "warning",
+        "message": "Issues: High memory usage: 103.4MB",
+        "details": {
+          "frameRate": 72.77269667520132,
+          "responseTime": 3.6010134103203506,
+          "memoryUsage": 103.36445367786729
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      },
+      "Memory Usage Check": {
+        "status": "healthy",
+        "message": "Memory usage is normal",
+        "details": {
+          "heapUsedMB": 4.38720703125,
+          "heapTotalMB": 5.59375,
+          "memoryUtilization": 0.7843051675977654
+        },
+        "duration": 1,
+        "consecutiveFailures": 0
+      },
+      "Error Rate Check": {
+        "status": "healthy",
+        "message": "Error rate is normal",
+        "details": {
+          "errorRate": 0,
+          "recentErrorCount": 0
+        },
+        "duration": 0,
+        "consecutiveFailures": 0
+      }
+    }
+  },
+  "systemStatus": "operational",
+  "recommendations": [
+    "Investigate and resolve failed health checks",
+    "Review system logs for error patterns",
+    "Address warning conditions to prevent failures",
+    "Review memory usage in Performance Metrics Check"
+  ]
+}
