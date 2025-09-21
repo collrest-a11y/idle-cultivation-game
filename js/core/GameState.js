@@ -876,33 +876,33 @@ class GameState {
     _initializeValidationRules() {
         // Player validation rules
         this.addValidation('player.jade',
-            value => typeof value === 'number' && value >= 0 && value <= 1e12 && !isNaN(value),
-            'Jade must be a valid non-negative number under 1 trillion');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 1e12 && !isNaN(value)),
+            'Jade must be null or a valid non-negative number under 1 trillion');
 
         this.addValidation('player.spiritCrystals',
-            value => typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value),
-            'Spirit crystals must be a valid non-negative integer under 1 billion');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value)),
+            'Spirit crystals must be null or a valid non-negative integer under 1 billion');
 
         this.addValidation('player.name',
-            value => typeof value === 'string' && value.length >= 1 && value.length <= 50 && /^[a-zA-Z0-9_\-\s]+$/.test(value),
-            'Player name must be 1-50 alphanumeric characters, underscores, hyphens, or spaces');
+            value => value == null || (typeof value === 'string' && value.length >= 1 && value.length <= 50 && /^[a-zA-Z0-9_\-\s]+$/.test(value)),
+            'Player name must be null or 1-50 alphanumeric characters, underscores, hyphens, or spaces');
 
         // Cultivation validation rules
         this.addValidation('cultivation.qi.level',
-            value => typeof value === 'number' && value >= 0 && value <= 10000 && Number.isInteger(value),
-            'Qi level must be a valid integer between 0 and 10000');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 10000 && Number.isInteger(value)),
+            'Qi level must be null or a valid integer between 0 and 10000');
 
         this.addValidation('cultivation.body.level',
-            value => typeof value === 'number' && value >= 0 && value <= 10000 && Number.isInteger(value),
-            'Body level must be a valid integer between 0 and 10000');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 10000 && Number.isInteger(value)),
+            'Body level must be null or a valid integer between 0 and 10000');
 
         this.addValidation('cultivation.realm',
-            value => typeof value === 'string' && value.length >= 1 && value.length <= 100 && /^[a-zA-Z\s]+$/.test(value),
-            'Cultivation realm must be a valid string with only letters and spaces');
+            value => value == null || (typeof value === 'string' && value.length >= 1 && value.length <= 100 && /^[a-zA-Z\s]+$/.test(value)),
+            'Cultivation realm must be null or a valid string with only letters and spaces');
 
         this.addValidation('cultivation.stage',
-            value => typeof value === 'number' && value >= 1 && value <= 100 && Number.isInteger(value),
-            'Cultivation stage must be a valid integer between 1 and 100');
+            value => value == null || (typeof value === 'number' && value >= 1 && value <= 100 && Number.isInteger(value)),
+            'Cultivation stage must be null or a valid integer between 1 and 100');
 
         // Equipment validation rules
         this.addValidation('loadout.weapon.level',
@@ -915,36 +915,36 @@ class GameState {
 
         // Scripture validation rules
         this.addValidation('scriptures.collection',
-            value => Array.isArray(value) && value.length <= 1000,
-            'Scripture collection must be an array with maximum 1000 entries');
+            value => value == null || (Array.isArray(value) && value.length <= 1000),
+            'Scripture collection must be null or an array with maximum 1000 entries');
 
         // Combat validation rules
         this.addValidation('combat.wins',
-            value => typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value),
-            'Combat wins must be a valid non-negative integer under 1 billion');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value)),
+            'Combat wins must be null or a valid non-negative integer under 1 billion');
 
         this.addValidation('combat.losses',
-            value => typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value),
-            'Combat losses must be a valid non-negative integer under 1 billion');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= 1e9 && Number.isInteger(value)),
+            'Combat losses must be null or a valid non-negative integer under 1 billion');
 
         // Quest validation rules
         this.addValidation('quests.completed',
-            value => Array.isArray(value) && value.length <= 10000,
-            'Completed quests must be an array with maximum 10000 entries');
+            value => value == null || (Array.isArray(value) && value.length <= 10000),
+            'Completed quests must be null or an array with maximum 10000 entries');
 
         // Achievement validation rules
         this.addValidation('achievements.unlocked',
-            value => Array.isArray(value) && value.length <= 1000,
-            'Unlocked achievements must be an array with maximum 1000 entries');
+            value => value == null || (Array.isArray(value) && value.length <= 1000),
+            'Unlocked achievements must be null or an array with maximum 1000 entries');
 
         // Time-based validation rules
         this.addValidation('lastSaveTime',
-            value => typeof value === 'number' && value >= 0 && value <= Date.now() + 86400000,
-            'Last save time must be a valid timestamp not more than 24 hours in the future');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= Date.now() + 86400000),
+            'Last save time must be null or a valid timestamp not more than 24 hours in the future');
 
         this.addValidation('lastOnlineTime',
-            value => typeof value === 'number' && value >= 0 && value <= Date.now() + 86400000,
-            'Last online time must be a valid timestamp not more than 24 hours in the future');
+            value => value == null || (typeof value === 'number' && value >= 0 && value <= Date.now() + 86400000),
+            'Last online time must be null or a valid timestamp not more than 24 hours in the future');
 
         // CP Progression System validation rules
         this.addValidation('mounts.active',
