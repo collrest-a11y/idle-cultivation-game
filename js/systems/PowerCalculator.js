@@ -280,7 +280,7 @@ class PowerCalculator {
         // Apply CP progression system cap (50% maximum contribution)
         let cappedProgressionPower = progressionPower;
         const basePowerSum = basePower + scripturePower + equipmentPower;
-        const maxProgressionPower = basePowerSum * 1.0; // 100% of base power as maximum
+        const maxProgressionPower = basePowerSum * 0.5; // 50% of base power as maximum
 
         if (progressionPower > maxProgressionPower) {
             // Apply diminishing returns for excessive CP progression
