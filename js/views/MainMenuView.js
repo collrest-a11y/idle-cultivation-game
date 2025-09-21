@@ -464,22 +464,58 @@ class MainMenuView extends GameView {
      */
     async loadData() {
         try {
-            // Load player data
-            this.playerData = this.gameState?.get('player') || this.createMockPlayerData();
+            console.log('MainMenuView: Loading data...');
 
-            // Load game progress
-            this.gameProgress = this.calculateGameProgress();
+            // Load player data with error handling
+            try {
+                this.playerData = this.gameState?.get('player') || null;
+                if (!this.playerData) {
+                    console.log('MainMenuView: No player data found, creating mock data');
+                    this.playerData = this.createMockPlayerData();
+                }
+            } catch (playerError) {
+                console.warn('MainMenuView: Error loading player data:', playerError);
+                this.playerData = this.createMockPlayerData();
+            }
 
-            // Load notifications
-            this.notifications = this.getRecentNotifications();
+            // Load game progress with error handling
+            try {
+                this.gameProgress = this.calculateGameProgress();
+            } catch (progressError) {
+                console.warn('MainMenuView: Error calculating game progress:', progressError);
+                this.gameProgress = this._createDefaultGameProgress();
+            }
 
-            // Load system status
-            this.systemStatus = this.getSystemStatus();
+            // Load notifications with error handling
+            try {
+                this.notifications = this.getRecentNotifications() || [];
+                if (!Array.isArray(this.notifications)) {
+                    console.warn('MainMenuView: Notifications is not an array, resetting to empty');
+                    this.notifications = [];
+                }
+            } catch (notificationError) {
+                console.warn('MainMenuView: Error loading notifications:', notificationError);
+                this.notifications = [];
+            }
+
+            // Load system status with error handling
+            try {
+                this.systemStatus = this.getSystemStatus();
+            } catch (statusError) {
+                console.warn('MainMenuView: Error loading system status:', statusError);
+                this.systemStatus = { autoSave: true, offlineProgress: true, notifications: true };
+            }
 
             console.log('MainMenuView: Data loaded successfully');
 
         } catch (error) {
             console.error('MainMenuView: Failed to load data', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'MainMenuView',
+                    method: 'loadData'
+                }, 'ui');
+            }
             this.createMockData();
         }
     }
@@ -724,25 +760,87 @@ class MainMenuView extends GameView {
      * Render notifications
      */
     renderNotifications() {
-        const notificationsList = this.notificationsPanel.querySelector('.notifications-list');
+        try {
+            if (!this.notificationsPanel) {
+                console.warn('MainMenuView: Notifications panel not available for rendering');
+                return;
+            }
 
-        notificationsList.innerHTML = '';
+            const notificationsList = this.notificationsPanel.querySelector('.notifications-list');
+            if (!notificationsList) {
+                console.warn('MainMenuView: Notifications list container not found');
+                return;
+            }
 
-        if (this.notifications.length === 0) {
-            notificationsList.innerHTML = '<div class="empty-notifications">No new notifications</div>';
-        } else {
-            this.notifications.slice(0, 5).forEach(notification => {
-                const notificationItem = this.createNotificationItem(notification);
-                if (notificationItem) {
-                    notificationsList.appendChild(notificationItem);
+            // Clear existing content
+            notificationsList.innerHTML = '';
+
+            // Ensure notifications is an array
+            if (!Array.isArray(this.notifications)) {
+                console.warn('MainMenuView: Notifications is not an array, resetting to empty');
+                this.notifications = [];
+            }
+
+            if (this.notifications.length === 0) {
+                notificationsList.innerHTML = '<div class="empty-notifications">No new notifications</div>';
+            } else {
+                // Render up to 5 notifications with error handling
+                const notificationsToShow = this.notifications.slice(0, 5);
+                let renderedCount = 0;
+
+                notificationsToShow.forEach((notification, index) => {
+                    try {
+                        const notificationItem = this.createNotificationItem(notification);
+                        if (notificationItem) {
+                            notificationsList.appendChild(notificationItem);
+                            renderedCount++;
+                        }
+                    } catch (renderError) {
+                        console.error(`MainMenuView: Error rendering notification ${index}:`, renderError);
+                        if (window.errorManager) {
+                            window.errorManager.reportError(renderError, {
+                                component: 'MainMenuView',
+                                method: 'renderNotifications',
+                                notificationIndex: index
+                            }, 'ui');
+                        }
+                    }
+                });
+
+                // Show "more" indicator if there are additional notifications
+                if (this.notifications.length > 5) {
+                    try {
+                        const moreItem = document.createElement('div');
+                        moreItem.className = 'more-notifications';
+                        const additionalCount = this.notifications.length - 5;
+                        moreItem.textContent = `${additionalCount} more notification${additionalCount > 1 ? 's' : ''}...`;
+                        notificationsList.appendChild(moreItem);
+                    } catch (moreError) {
+                        console.error('MainMenuView: Error creating more notifications indicator:', moreError);
+                    }
                 }
-            });
 
-            if (this.notifications.length > 5) {
-                const moreItem = document.createElement('div');
-                moreItem.className = 'more-notifications';
-                moreItem.textContent = `${this.notifications.length - 5} more notifications...`;
-                notificationsList.appendChild(moreItem);
+                console.log(`MainMenuView: Rendered ${renderedCount} notifications`);
+            }
+        } catch (error) {
+            console.error('MainMenuView: Error rendering notifications:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'MainMenuView',
+                    method: 'renderNotifications'
+                }, 'ui');
+            }
+
+            // Fallback: show error message
+            try {
+                if (this.notificationsPanel) {
+                    const notificationsList = this.notificationsPanel.querySelector('.notifications-list');
+                    if (notificationsList) {
+                        notificationsList.innerHTML = '<div class="error-notifications">Error loading notifications</div>';
+                    }
+                }
+            } catch (fallbackError) {
+                console.error('MainMenuView: Error showing fallback notification message:', fallbackError);
             }
         }
     }
@@ -751,47 +849,103 @@ class MainMenuView extends GameView {
      * Create notification item
      */
     createNotificationItem(notification) {
-        if (!notification) {
-            console.warn('MainMenuView: Attempted to create notification item with undefined notification');
+        try {
+            if (!notification || typeof notification !== 'object') {
+                console.warn('MainMenuView: Invalid notification data provided');
+                return null;
+            }
+
+            // Validate required fields and provide defaults
+            const safeNotification = {
+                id: notification.id || `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                type: notification.type || 'info',
+                title: notification.title || 'Notification',
+                message: notification.message || '',
+                timestamp: notification.timestamp || Date.now(),
+                read: notification.read || false
+            };
+
+            const item = document.createElement('div');
+            item.className = `notification-item ${safeNotification.type} ${safeNotification.read ? 'read' : 'unread'}`;
+
+            let timeAgo;
+            try {
+                timeAgo = this.formatTimeAgo(safeNotification.timestamp);
+            } catch (timeError) {
+                console.warn('MainMenuView: Error formatting notification time:', timeError);
+                timeAgo = 'Recently';
+            }
+
+            // Safely escape HTML content
+            const safeTitle = this._escapeHtml(safeNotification.title);
+            const safeMessage = this._escapeHtml(safeNotification.message);
+            const safeType = this._escapeHtml(safeNotification.type);
+
+            item.innerHTML = `
+                <div class="notification-icon">
+                    <span class="icon-${safeType}"></span>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${safeTitle}</div>
+                    <div class="notification-message">${safeMessage}</div>
+                    <div class="notification-time">${timeAgo}</div>
+                </div>
+                <div class="notification-actions">
+                    <button class="btn btn-sm dismiss-btn" data-notification-id="${safeNotification.id}">
+                        <span class="icon-x"></span>
+                    </button>
+                </div>
+            `;
+
+            // Add event listener with error handling
+            const dismissBtn = item.querySelector('.dismiss-btn');
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', (e) => {
+                    try {
+                        e.stopPropagation();
+                        this.dismissNotification(safeNotification.id);
+                    } catch (dismissError) {
+                        console.error('MainMenuView: Error dismissing notification:', dismissError);
+                        if (window.errorManager) {
+                            window.errorManager.reportError(dismissError, {
+                                component: 'MainMenuView',
+                                method: 'dismissNotification',
+                                notificationId: safeNotification.id
+                            }, 'ui');
+                        }
+                    }
+                });
+            }
+
+            // Mark as read when clicked with error handling
+            if (!safeNotification.read) {
+                item.addEventListener('click', () => {
+                    try {
+                        this.markNotificationAsRead(safeNotification.id);
+                    } catch (readError) {
+                        console.error('MainMenuView: Error marking notification as read:', readError);
+                        if (window.errorManager) {
+                            window.errorManager.reportError(readError, {
+                                component: 'MainMenuView',
+                                method: 'markNotificationAsRead',
+                                notificationId: safeNotification.id
+                            }, 'ui');
+                        }
+                    }
+                });
+            }
+
+            return item;
+        } catch (error) {
+            console.error('MainMenuView: Error creating notification item:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'MainMenuView',
+                    method: 'createNotificationItem'
+                }, 'ui');
+            }
             return null;
         }
-
-        const item = document.createElement('div');
-        item.className = `notification-item ${notification.type || 'info'} ${notification.read ? 'read' : 'unread'}`;
-
-        const timeAgo = this.formatTimeAgo(notification.timestamp || Date.now());
-
-        item.innerHTML = `
-            <div class="notification-icon">
-                <span class="icon-${notification.type || 'info'}"></span>
-            </div>
-            <div class="notification-content">
-                <div class="notification-title">${notification.title || 'Notification'}</div>
-                <div class="notification-message">${notification.message || ''}</div>
-                <div class="notification-time">${timeAgo}</div>
-            </div>
-            <div class="notification-actions">
-                <button class="btn btn-sm dismiss-btn" data-notification-id="${notification.id || Date.now()}">
-                    <span class="icon-x"></span>
-                </button>
-            </div>
-        `;
-
-        // Add event listener
-        const dismissBtn = item.querySelector('.dismiss-btn');
-        dismissBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.dismissNotification(notification.id);
-        });
-
-        // Mark as read when clicked
-        if (!notification.read) {
-            item.addEventListener('click', () => {
-                this.markNotificationAsRead(notification.id);
-            });
-        }
-
-        return item;
     }
 
     /**
@@ -858,20 +1012,90 @@ class MainMenuView extends GameView {
      * Notification methods
      */
     clearAllNotifications() {
-        this.notifications = [];
-        this.renderNotifications();
+        try {
+            const clearedCount = Array.isArray(this.notifications) ? this.notifications.length : 0;
+            this.notifications = [];
+            this.renderNotifications();
+            console.log(`MainMenuView: Cleared ${clearedCount} notifications`);
+        } catch (error) {
+            console.error('MainMenuView: Error clearing notifications:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'MainMenuView',
+                    method: 'clearAllNotifications'
+                }, 'ui');
+            }
+            // Force clear even if error occurred
+            this.notifications = [];
+        }
     }
 
     dismissNotification(notificationId) {
-        this.notifications = this.notifications.filter(n => n.id !== notificationId);
-        this.renderNotifications();
+        try {
+            if (!notificationId) {
+                console.warn('MainMenuView: Cannot dismiss notification without ID');
+                return;
+            }
+
+            if (!Array.isArray(this.notifications)) {
+                console.warn('MainMenuView: Notifications is not an array, cannot dismiss');
+                this.notifications = [];
+                return;
+            }
+
+            const initialLength = this.notifications.length;
+            this.notifications = this.notifications.filter(n => n && n.id !== notificationId);
+            const newLength = this.notifications.length;
+
+            if (initialLength === newLength) {
+                console.warn(`MainMenuView: Notification ${notificationId} not found for dismissal`);
+            } else {
+                console.log(`MainMenuView: Dismissed notification ${notificationId}`);
+            }
+
+            this.renderNotifications();
+        } catch (error) {
+            console.error('MainMenuView: Error dismissing notification:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'MainMenuView',
+                    method: 'dismissNotification',
+                    notificationId
+                }, 'ui');
+            }
+        }
     }
 
     markNotificationAsRead(notificationId) {
-        const notification = this.notifications.find(n => n.id === notificationId);
-        if (notification) {
-            notification.read = true;
-            this.renderNotifications();
+        try {
+            if (!notificationId) {
+                console.warn('MainMenuView: Cannot mark notification as read without ID');
+                return;
+            }
+
+            if (!Array.isArray(this.notifications)) {
+                console.warn('MainMenuView: Notifications is not an array, cannot mark as read');
+                this.notifications = [];
+                return;
+            }
+
+            const notification = this.notifications.find(n => n && n.id === notificationId);
+            if (notification) {
+                notification.read = true;
+                console.log(`MainMenuView: Marked notification ${notificationId} as read`);
+                this.renderNotifications();
+            } else {
+                console.warn(`MainMenuView: Notification ${notificationId} not found to mark as read`);
+            }
+        } catch (error) {
+            console.error('MainMenuView: Error marking notification as read:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'MainMenuView',
+                    method: 'markNotificationAsRead',
+                    notificationId
+                }, 'ui');
+            }
         }
     }
 
@@ -969,16 +1193,81 @@ class MainMenuView extends GameView {
         return 'Just now';
     }
 
+    /**
+     * Create default game progress
+     */
+    _createDefaultGameProgress() {
+        return {
+            cultivation: { current: 'Unknown', progress: 0 },
+            scriptures: { collected: 0, total: 100 },
+            achievements: { unlocked: 0, total: 50 },
+            quests: { active: 0, completed: 0 }
+        };
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    _escapeHtml(text) {
+        if (typeof text !== 'string') {
+            return String(text || '');
+        }
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.textContent = message;
+        try {
+            if (!message) {
+                console.warn('MainMenuView: Cannot show notification without message');
+                return;
+            }
 
-        document.body.appendChild(notification);
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = String(message);
 
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+            // Add some basic styles for visibility
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 16px;
+                background: ${type === 'error' ? '#f44336' : type === 'success' ? '#4caf50' : type === 'warning' ? '#ff9800' : '#2196f3'};
+                color: white;
+                border-radius: 4px;
+                z-index: 10000;
+                max-width: 300px;
+                word-wrap: break-word;
+            `;
+
+            if (document.body) {
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    try {
+                        if (notification.parentNode) {
+                            notification.remove();
+                        }
+                    } catch (removeError) {
+                        console.warn('MainMenuView: Error removing notification:', removeError);
+                    }
+                }, 3000);
+            } else {
+                console.warn('MainMenuView: Document body not available for notification');
+            }
+        } catch (error) {
+            console.error('MainMenuView: Error showing notification:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'MainMenuView',
+                    method: 'showNotification',
+                    message,
+                    type
+                }, 'ui');
+            }
+        }
     }
 }
 

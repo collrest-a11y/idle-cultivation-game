@@ -16,6 +16,7 @@ class ViewIntegration {
      */
     async initialize() {
         if (this.isInitialized) {
+            console.log('ViewIntegration: Already initialized, skipping...');
             return;
         }
 
@@ -29,45 +30,97 @@ class ViewIntegration {
                 });
             }
 
-            // Get references to main containers
+            // Get references to main containers with error handling
             this.gameInterface = document.getElementById('game-interface');
             this.characterCreation = document.getElementById('character-creation');
 
             if (!this.gameInterface) {
-                throw new Error('Game interface container not found');
-            }
+                const errorMsg = 'Game interface container not found - DOM may not be ready';
+                console.error('ViewIntegration:', errorMsg);
 
-            // Initialize UI Manager if not already done
-            if (!window.uiManager || !window.uiManager.isInitialized) {
-                this.uiManager = window.uiManager || new UIManager();
-                await this.uiManager.init({
-                    eventManager: window.eventManager,
-                    gameState: window.gameState,
-                    enablePerformanceMonitoring: true
-                });
-                window.uiManager = this.uiManager;
-            } else {
-                this.uiManager = window.uiManager;
-            }
-
-            // Initialize View Manager
-            this.viewManager = window.viewManager || new ViewManager();
-            await this.viewManager.initialize({
-                container: this.gameInterface,
-                eventManager: window.eventManager,
-                gameState: window.gameState,
-                uiManager: this.uiManager,
-                startView: 'main-menu',
-                settings: {
-                    enableTransitions: true,
-                    transitionDuration: 300,
-                    enableHistory: true,
-                    maxHistoryLength: 10,
-                    enableViewCaching: true,
-                    cacheLimit: 5
+                // Report error but attempt recovery
+                if (window.errorManager) {
+                    window.errorManager.reportError(errorMsg, {
+                        component: 'ViewIntegration',
+                        phase: 'initialization',
+                        domState: document.readyState,
+                        bodyExists: !!document.body
+                    }, 'ui');
                 }
-            });
-            window.viewManager = this.viewManager;
+
+                // Create fallback container
+                this.gameInterface = this._createFallbackGameInterface();
+                if (!this.gameInterface) {
+                    throw new Error('Failed to create fallback game interface');
+                }
+            }
+
+            // Initialize UI Manager if not already done with error handling
+            try {
+                if (!window.uiManager || !window.uiManager.isInitialized) {
+                    if (typeof UIManager === 'undefined') {
+                        console.warn('ViewIntegration: UIManager class not available, skipping UI manager initialization');
+                        this.uiManager = null;
+                    } else {
+                        this.uiManager = window.uiManager || new UIManager();
+                        await this.uiManager.init({
+                            eventManager: window.eventManager || null,
+                            gameState: window.gameState || null,
+                            enablePerformanceMonitoring: true
+                        });
+                        window.uiManager = this.uiManager;
+                        console.log('ViewIntegration: UIManager initialized successfully');
+                    }
+                } else {
+                    this.uiManager = window.uiManager;
+                    console.log('ViewIntegration: Using existing UIManager');
+                }
+            } catch (uiError) {
+                console.error('ViewIntegration: Failed to initialize UIManager:', uiError);
+                if (window.errorManager) {
+                    window.errorManager.reportError(uiError, {
+                        component: 'ViewIntegration',
+                        phase: 'ui_manager_init'
+                    }, 'ui');
+                }
+                this.uiManager = null; // Continue without UI manager
+            }
+
+            // Initialize View Manager with comprehensive error handling
+            try {
+                if (typeof ViewManager === 'undefined') {
+                    throw new Error('ViewManager class not available');
+                }
+
+                this.viewManager = window.viewManager || new ViewManager();
+                await this.viewManager.initialize({
+                    container: this.gameInterface,
+                    eventManager: window.eventManager || null,
+                    gameState: window.gameState || null,
+                    uiManager: this.uiManager,
+                    startView: 'main-menu',
+                    settings: {
+                        enableTransitions: true,
+                        transitionDuration: 300,
+                        enableHistory: true,
+                        maxHistoryLength: 10,
+                        enableViewCaching: true,
+                        cacheLimit: 5
+                    }
+                });
+                window.viewManager = this.viewManager;
+                console.log('ViewIntegration: ViewManager initialized successfully');
+            } catch (viewError) {
+                console.error('ViewIntegration: Failed to initialize ViewManager:', viewError);
+                if (window.errorManager) {
+                    window.errorManager.reportError(viewError, {
+                        component: 'ViewIntegration',
+                        phase: 'view_manager_init',
+                        containerExists: !!this.gameInterface
+                    }, 'ui');
+                }
+                throw viewError; // This is critical, cannot continue without ViewManager
+            }
 
             // Register all view classes
             this.registerViewClasses();
@@ -87,14 +140,42 @@ class ViewIntegration {
             this.isInitialized = true;
             console.log('ViewIntegration: Initialization complete');
 
-            // Emit integration ready event
-            window.eventManager?.emit('viewIntegration:ready', {
-                viewManager: this.viewManager,
-                uiManager: this.uiManager
-            });
+            // Emit integration ready event with error handling
+            try {
+                if (window.eventManager && typeof window.eventManager.emit === 'function') {
+                    window.eventManager.emit('viewIntegration:ready', {
+                        viewManager: this.viewManager,
+                        uiManager: this.uiManager,
+                        hasCharacterCreation: !!this.characterCreation,
+                        hasGameInterface: !!this.gameInterface
+                    });
+                } else {
+                    console.warn('ViewIntegration: EventManager not available for ready event');
+                }
+            } catch (eventError) {
+                console.error('ViewIntegration: Failed to emit ready event:', eventError);
+                // Non-critical error, continue
+            }
 
         } catch (error) {
             console.error('ViewIntegration: Initialization failed', error);
+
+            // Report critical error
+            if (window.errorManager) {
+                window.errorManager.reportCriticalError(error, {
+                    component: 'ViewIntegration',
+                    phase: 'initialization',
+                    gameInterfaceExists: !!this.gameInterface,
+                    characterCreationExists: !!this.characterCreation,
+                    domReady: document.readyState === 'complete'
+                });
+            }
+
+            // Reset initialization state
+            this.isInitialized = false;
+            this.viewManager = null;
+            this.uiManager = null;
+
             throw error;
         }
     }
@@ -128,21 +209,57 @@ class ViewIntegration {
      * Setup character creation integration
      */
     setupCharacterCreation() {
-        if (!this.characterCreation) {
-            return;
-        }
+        try {
+            if (!this.characterCreation) {
+                console.warn('ViewIntegration: Character creation container not found, skipping character creation setup');
+                // Assume character exists and show game interface
+                this.showGameInterface();
+                return;
+            }
 
-        // Listen for character creation completion
-        window.eventManager?.on('character:created', () => {
-            this.showGameInterface();
-        });
+            // Listen for character creation completion with error handling
+            if (window.eventManager && typeof window.eventManager.on === 'function') {
+                window.eventManager.on('character:created', () => {
+                    try {
+                        this.showGameInterface();
+                    } catch (error) {
+                        console.error('ViewIntegration: Error showing game interface after character creation:', error);
+                        if (window.errorManager) {
+                            window.errorManager.reportError(error, {
+                                component: 'ViewIntegration',
+                                context: 'character_created_handler'
+                            }, 'ui');
+                        }
+                    }
+                });
+            } else {
+                console.warn('ViewIntegration: EventManager not available for character creation events');
+            }
 
-        // Check if character already exists
-        const hasCharacter = window.gameState?.get('player.character.created');
-        if (hasCharacter) {
+            // Check if character already exists with error handling
+            let hasCharacter = false;
+            try {
+                hasCharacter = window.gameState?.get('player.character.created') || false;
+            } catch (error) {
+                console.warn('ViewIntegration: Error checking character existence, assuming no character:', error);
+                hasCharacter = false;
+            }
+
+            if (hasCharacter) {
+                this.showGameInterface();
+            } else {
+                this.showCharacterCreation();
+            }
+        } catch (error) {
+            console.error('ViewIntegration: Error in setupCharacterCreation:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'ViewIntegration',
+                    method: 'setupCharacterCreation'
+                }, 'ui');
+            }
+            // Fallback: show game interface
             this.showGameInterface();
-        } else {
-            this.showCharacterCreation();
         }
     }
 
@@ -150,11 +267,27 @@ class ViewIntegration {
      * Show character creation
      */
     showCharacterCreation() {
-        if (this.characterCreation) {
-            this.characterCreation.classList.remove('hidden');
-        }
-        if (this.gameInterface) {
-            this.gameInterface.classList.add('hidden');
+        try {
+            if (this.characterCreation) {
+                this.characterCreation.classList.remove('hidden');
+                this.characterCreation.style.display = 'block';
+                console.log('ViewIntegration: Character creation shown');
+            } else {
+                console.warn('ViewIntegration: Cannot show character creation - container not found');
+            }
+
+            if (this.gameInterface) {
+                this.gameInterface.classList.add('hidden');
+                this.gameInterface.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('ViewIntegration: Error showing character creation:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'ViewIntegration',
+                    method: 'showCharacterCreation'
+                }, 'ui');
+            }
         }
     }
 
@@ -162,16 +295,53 @@ class ViewIntegration {
      * Show game interface
      */
     showGameInterface() {
-        if (this.characterCreation) {
-            this.characterCreation.classList.add('hidden');
-        }
-        if (this.gameInterface) {
-            this.gameInterface.classList.remove('hidden');
-        }
+        try {
+            if (this.characterCreation) {
+                this.characterCreation.classList.add('hidden');
+                this.characterCreation.style.display = 'none';
+            }
 
-        // Navigate to main menu if view manager is ready
-        if (this.viewManager && this.viewManager.isInitialized) {
-            this.viewManager.navigateTo('main-menu');
+            if (this.gameInterface) {
+                this.gameInterface.classList.remove('hidden');
+                this.gameInterface.style.display = 'block';
+                console.log('ViewIntegration: Game interface shown');
+            } else {
+                console.error('ViewIntegration: Cannot show game interface - container not found');
+                return;
+            }
+
+            // Navigate to main menu if view manager is ready
+            try {
+                if (this.viewManager && this.viewManager.isInitialized && typeof this.viewManager.navigateTo === 'function') {
+                    this.viewManager.navigateTo('main-menu');
+                    console.log('ViewIntegration: Navigated to main menu');
+                } else {
+                    console.warn('ViewIntegration: ViewManager not ready for navigation');
+                    // Retry navigation after a short delay
+                    setTimeout(() => {
+                        if (this.viewManager && this.viewManager.isInitialized && typeof this.viewManager.navigateTo === 'function') {
+                            this.viewManager.navigateTo('main-menu');
+                        }
+                    }, 1000);
+                }
+            } catch (navError) {
+                console.error('ViewIntegration: Error navigating to main menu:', navError);
+                if (window.errorManager) {
+                    window.errorManager.reportError(navError, {
+                        component: 'ViewIntegration',
+                        method: 'showGameInterface',
+                        context: 'navigation'
+                    }, 'ui');
+                }
+            }
+        } catch (error) {
+            console.error('ViewIntegration: Error showing game interface:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'ViewIntegration',
+                    method: 'showGameInterface'
+                }, 'ui');
+            }
         }
     }
 
@@ -269,11 +439,45 @@ class ViewIntegration {
      * Notify a specific view of an event
      */
     notifyView(viewId, method, data) {
-        if (!this.viewManager) return;
+        try {
+            if (!this.viewManager) {
+                console.warn(`ViewIntegration: Cannot notify view ${viewId} - ViewManager not available`);
+                return;
+            }
 
-        const viewInstance = this.viewManager.views.get(viewId);
-        if (viewInstance && typeof viewInstance[method] === 'function') {
-            viewInstance[method](data);
+            if (!this.viewManager.views) {
+                console.warn(`ViewIntegration: Cannot notify view ${viewId} - Views map not available`);
+                return;
+            }
+
+            const viewInstance = this.viewManager.views.get(viewId);
+            if (viewInstance && typeof viewInstance[method] === 'function') {
+                try {
+                    viewInstance[method](data);
+                } catch (methodError) {
+                    console.error(`ViewIntegration: Error calling ${method} on view ${viewId}:`, methodError);
+                    if (window.errorManager) {
+                        window.errorManager.reportError(methodError, {
+                            component: 'ViewIntegration',
+                            method: 'notifyView',
+                            viewId,
+                            targetMethod: method
+                        }, 'ui');
+                    }
+                }
+            } else {
+                console.warn(`ViewIntegration: View ${viewId} not found or method ${method} not available`);
+            }
+        } catch (error) {
+            console.error('ViewIntegration: Error in notifyView:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'ViewIntegration',
+                    method: 'notifyView',
+                    viewId,
+                    targetMethod: method
+                }, 'ui');
+            }
         }
     }
 
@@ -372,37 +576,86 @@ class ViewIntegration {
      * Show offline progress notification
      */
     showOfflineProgressNotification(data) {
-        const notification = document.createElement('div');
-        notification.className = 'offline-progress-notification';
-        notification.innerHTML = `
-            <div class="notification-content">
-                <h3>Welcome Back!</h3>
-                <p>You were away for ${this.formatTime(data.timeAway)}</p>
-                <div class="offline-progress">
-                    <h4>Offline Progress:</h4>
-                    <ul>
-                        ${data.progress ? Object.entries(data.progress).map(([key, value]) =>
-                            `<li>${key}: +${value}</li>`
-                        ).join('') : '<li>No progress made</li>'}
-                    </ul>
-                </div>
-                <button class="btn btn-primary close-notification">Continue</button>
-            </div>
-        `;
-
-        document.body.appendChild(notification);
-
-        const closeBtn = notification.querySelector('.close-notification');
-        closeBtn.addEventListener('click', () => {
-            notification.remove();
-        });
-
-        // Auto-close after 10 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
+        try {
+            if (!data || typeof data !== 'object') {
+                console.warn('ViewIntegration: Invalid data for offline progress notification');
+                return;
             }
-        }, 10000);
+
+            const notification = document.createElement('div');
+            notification.className = 'offline-progress-notification';
+
+            // Safely format time and progress
+            const timeAway = this.formatTime(data.timeAway || 0);
+            let progressHTML = '<li>No progress made</li>';
+
+            if (data.progress && typeof data.progress === 'object') {
+                try {
+                    const progressEntries = Object.entries(data.progress);
+                    if (progressEntries.length > 0) {
+                        progressHTML = progressEntries.map(([key, value]) => {
+                            const safeKey = String(key || 'Unknown');
+                            const safeValue = String(value || '0');
+                            return `<li>${safeKey}: +${safeValue}</li>`;
+                        }).join('');
+                    }
+                } catch (progressError) {
+                    console.warn('ViewIntegration: Error processing progress data:', progressError);
+                }
+            }
+
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <h3>Welcome Back!</h3>
+                    <p>You were away for ${timeAway}</p>
+                    <div class="offline-progress">
+                        <h4>Offline Progress:</h4>
+                        <ul>
+                            ${progressHTML}
+                        </ul>
+                    </div>
+                    <button class="btn btn-primary close-notification">Continue</button>
+                </div>
+            `;
+
+            if (document.body) {
+                document.body.appendChild(notification);
+
+                const closeBtn = notification.querySelector('.close-notification');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        try {
+                            if (notification.parentNode) {
+                                notification.remove();
+                            }
+                        } catch (removeError) {
+                            console.warn('ViewIntegration: Error removing notification:', removeError);
+                        }
+                    });
+                }
+
+                // Auto-close after 10 seconds
+                setTimeout(() => {
+                    try {
+                        if (notification.parentNode) {
+                            notification.remove();
+                        }
+                    } catch (removeError) {
+                        console.warn('ViewIntegration: Error auto-removing notification:', removeError);
+                    }
+                }, 10000);
+            } else {
+                console.warn('ViewIntegration: Document body not available for notification');
+            }
+        } catch (error) {
+            console.error('ViewIntegration: Error showing offline progress notification:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'ViewIntegration',
+                    method: 'showOfflineProgressNotification'
+                }, 'ui');
+            }
+        }
     }
 
     /**
@@ -455,15 +708,87 @@ class ViewIntegration {
     }
 
     /**
+     * Create fallback game interface container
+     */
+    _createFallbackGameInterface() {
+        try {
+            console.log('ViewIntegration: Creating fallback game interface container');
+
+            // Check if document body exists
+            if (!document.body) {
+                console.error('ViewIntegration: Document body not available for fallback container');
+                return null;
+            }
+
+            // Create game interface container
+            const gameInterface = document.createElement('div');
+            gameInterface.id = 'game-interface';
+            gameInterface.className = 'game-interface fallback-container';
+            gameInterface.style.cssText = `
+                width: 100%;
+                height: 100vh;
+                position: relative;
+                overflow: hidden;
+                background: #1a1a1a;
+                color: #ffffff;
+            `;
+
+            // Create a basic header for the fallback
+            const header = document.createElement('div');
+            header.className = 'fallback-header';
+            header.style.cssText = `
+                padding: 20px;
+                text-align: center;
+                background: #2a2a2a;
+                border-bottom: 1px solid #444;
+            `;
+            header.innerHTML = '<h1>Idle Cultivation Game</h1><p>Loading game interface...</p>';
+
+            gameInterface.appendChild(header);
+            document.body.appendChild(gameInterface);
+
+            console.log('ViewIntegration: Fallback game interface created successfully');
+            return gameInterface;
+        } catch (error) {
+            console.error('ViewIntegration: Error creating fallback game interface:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'ViewIntegration',
+                    method: '_createFallbackGameInterface'
+                }, 'ui');
+            }
+            return null;
+        }
+    }
+
+    /**
      * Cleanup and destroy
      */
     destroy() {
-        if (this.viewManager) {
-            this.viewManager.destroy();
-        }
+        try {
+            if (this.viewManager && typeof this.viewManager.destroy === 'function') {
+                this.viewManager.destroy();
+            }
 
-        this.isInitialized = false;
-        console.log('ViewIntegration: Destroyed');
+            // Clear references
+            this.viewManager = null;
+            this.uiManager = null;
+            this.gameInterface = null;
+            this.characterCreation = null;
+
+            this.isInitialized = false;
+            console.log('ViewIntegration: Destroyed successfully');
+        } catch (error) {
+            console.error('ViewIntegration: Error during destruction:', error);
+            if (window.errorManager) {
+                window.errorManager.reportError(error, {
+                    component: 'ViewIntegration',
+                    method: 'destroy'
+                }, 'ui');
+            }
+            // Force reset state even if destruction failed
+            this.isInitialized = false;
+        }
     }
 }
 

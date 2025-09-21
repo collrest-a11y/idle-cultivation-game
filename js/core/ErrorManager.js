@@ -166,10 +166,41 @@ class ErrorManager {
      * @param {PromiseRejectionEvent} event - Unhandled rejection event
      */
     handleUnhandledRejection(event) {
-        this.reportError(event.reason, {
-            type: 'unhandled_promise_rejection',
-            promise: event.promise
-        }, this.categories.SYSTEM);
+        try {
+            const reason = event.reason;
+            let error, context;
+
+            if (reason instanceof Error) {
+                error = reason;
+                context = {
+                    type: 'unhandled_promise_rejection',
+                    stack: reason.stack,
+                    name: reason.name
+                };
+            } else {
+                error = new Error(String(reason || 'Unknown promise rejection'));
+                context = {
+                    type: 'unhandled_promise_rejection',
+                    originalReason: reason,
+                    reasonType: typeof reason
+                };
+            }
+
+            // Add additional context
+            context.url = window.location.href;
+            context.timestamp = Date.now();
+            context.userAgent = navigator.userAgent;
+
+            // Check if this is a critical promise rejection
+            const isCritical = this._isCriticalPromiseRejection(reason, context);
+            const category = isCritical ? this.categories.CRITICAL : this.categories.SYSTEM;
+
+            this.reportError(error, context, category);
+        } catch (handlerError) {
+            console.error('ErrorManager: Failed to handle promise rejection:', handlerError);
+            // Fallback error reporting
+            console.error('Original rejection reason:', event.reason);
+        }
     }
 
     /**
@@ -177,12 +208,31 @@ class ErrorManager {
      * @param {ErrorEvent} event - Error event
      */
     handleJavaScriptError(event) {
-        this.reportError(event.error || event.message, {
-            type: 'javascript_error',
-            filename: event.filename,
-            lineno: event.lineno,
-            colno: event.colno
-        }, this.categories.SYSTEM);
+        try {
+            const error = event.error || new Error(event.message || 'Unknown JavaScript error');
+
+            // Enhanced context collection
+            const context = {
+                type: 'javascript_error',
+                filename: event.filename || 'unknown',
+                lineno: event.lineno || 0,
+                colno: event.colno || 0,
+                userAgent: navigator.userAgent,
+                url: window.location.href,
+                timestamp: Date.now(),
+                stackTrace: error.stack || 'No stack trace available'
+            };
+
+            // Check if this is a critical system error
+            const isCritical = this._isCriticalError(error, context);
+            const category = isCritical ? this.categories.CRITICAL : this.categories.SYSTEM;
+
+            this.reportError(error, context, category);
+        } catch (handlerError) {
+            console.error('ErrorManager: Failed to handle JavaScript error:', handlerError);
+            // Fallback error reporting
+            console.error('Original error:', event.error || event.message);
+        }
     }
 
     /**
@@ -279,25 +329,63 @@ class ErrorManager {
     _setupGlobalErrorHandlers() {
         // Handle uncaught JavaScript errors
         window.addEventListener('error', (event) => {
-            this.handleJavaScriptError(event);
+            try {
+                this.handleJavaScriptError(event);
+            } catch (handlerError) {
+                console.error('ErrorManager: Error in JavaScript error handler:', handlerError);
+            }
         });
 
         // Handle unhandled promise rejections
         window.addEventListener('unhandledrejection', (event) => {
-            this.handleUnhandledRejection(event);
-            event.preventDefault(); // Prevent console spam
+            try {
+                this.handleUnhandledRejection(event);
+                event.preventDefault(); // Prevent console spam
+            } catch (handlerError) {
+                console.error('ErrorManager: Error in promise rejection handler:', handlerError);
+            }
         });
 
         // Handle resource loading errors
         window.addEventListener('error', (event) => {
-            if (event.target !== window) {
-                this.reportError(`Failed to load resource: ${event.target.src || event.target.href}`, {
-                    type: 'resource_error',
-                    target: event.target.tagName,
-                    src: event.target.src || event.target.href
-                }, this.categories.SYSTEM);
+            try {
+                if (event.target !== window && event.target) {
+                    const resourceUrl = event.target.src || event.target.href || 'unknown';
+                    const resourceType = event.target.tagName || 'unknown';
+
+                    this.reportError(`Failed to load resource: ${resourceUrl}`, {
+                        type: 'resource_error',
+                        target: resourceType,
+                        src: resourceUrl,
+                        currentUrl: window.location.href
+                    }, this.categories.SYSTEM);
+                }
+            } catch (handlerError) {
+                console.error('ErrorManager: Error in resource error handler:', handlerError);
             }
         }, true);
+
+        // Handle CSS parsing errors (if supported)
+        if ('oncsserror' in window) {
+            window.addEventListener('csserror', (event) => {
+                try {
+                    this.reportError(`CSS Error: ${event.message}`, {
+                        type: 'css_error',
+                        filename: event.filename,
+                        line: event.lineno,
+                        column: event.colno
+                    }, this.categories.UI);
+                } catch (handlerError) {
+                    console.error('ErrorManager: Error in CSS error handler:', handlerError);
+                }
+            });
+        }
+
+        // Add critical DOM error detection
+        this._setupDOMErrorDetection();
+
+        // Add memory pressure detection
+        this._setupMemoryPressureDetection();
     }
 
     /**
@@ -742,6 +830,227 @@ class ErrorManager {
     _getRecoverySuccessRate() {
         if (this.statistics.totalErrors === 0) return 0;
         return this.statistics.recoveredErrors / this.statistics.totalErrors;
+    }
+
+    /**
+     * Setup DOM error detection
+     */
+    _setupDOMErrorDetection() {
+        try {
+            // Monitor for missing critical DOM elements
+            const checkCriticalElements = () => {
+                const criticalElements = ['game-interface', 'character-creation'];
+                const missingElements = [];
+
+                criticalElements.forEach(id => {
+                    if (!document.getElementById(id)) {
+                        missingElements.push(id);
+                    }
+                });
+
+                if (missingElements.length > 0) {
+                    this.reportError(`Critical DOM elements missing: ${missingElements.join(', ')}`, {
+                        type: 'dom_critical_missing',
+                        missingElements,
+                        domReady: document.readyState,
+                        bodyExists: !!document.body
+                    }, this.categories.CRITICAL);
+                }
+            };
+
+            // Check after DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', checkCriticalElements);
+            } else {
+                setTimeout(checkCriticalElements, 1000); // Give time for dynamic creation
+            }
+
+            // Monitor for DOM mutation errors
+            if (window.MutationObserver) {
+                const observer = new MutationObserver((mutations) => {
+                    try {
+                        mutations.forEach(mutation => {
+                            // Check for problematic mutations
+                            if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+                                mutation.removedNodes.forEach(node => {
+                                    if (node.id && (node.id === 'game-interface' || node.id === 'character-creation')) {
+                                        this.reportError(`Critical DOM element removed: ${node.id}`, {
+                                            type: 'dom_critical_removed',
+                                            elementId: node.id,
+                                            mutationType: mutation.type
+                                        }, this.categories.CRITICAL);
+                                    }
+                                });
+                            }
+                        });
+                    } catch (observerError) {
+                        console.warn('ErrorManager: Error in DOM mutation observer:', observerError);
+                    }
+                });
+
+                observer.observe(document.body || document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        } catch (error) {
+            console.warn('ErrorManager: Failed to setup DOM error detection:', error);
+        }
+    }
+
+    /**
+     * Setup memory pressure detection
+     */
+    _setupMemoryPressureDetection() {
+        try {
+            // Monitor memory usage if performance API is available
+            if (window.performance && window.performance.memory) {
+                const checkMemoryPressure = () => {
+                    try {
+                        const memory = window.performance.memory;
+                        const usedMB = memory.usedJSHeapSize / 1048576; // Convert to MB
+                        const limitMB = memory.jsHeapSizeLimit / 1048576;
+                        const usagePercent = (usedMB / limitMB) * 100;
+
+                        if (usagePercent > 80) {
+                            this.reportError(`High memory usage detected: ${usagePercent.toFixed(1)}%`, {
+                                type: 'memory_pressure',
+                                usedMB: Math.round(usedMB),
+                                limitMB: Math.round(limitMB),
+                                usagePercent: Math.round(usagePercent)
+                            }, this.categories.PERFORMANCE);
+                        }
+                    } catch (memoryError) {
+                        console.warn('ErrorManager: Error checking memory pressure:', memoryError);
+                    }
+                };
+
+                // Check memory every 30 seconds
+                setInterval(checkMemoryPressure, 30000);
+            }
+
+            // Monitor for memory-related errors
+            const originalConsoleError = console.error;
+            console.error = (...args) => {
+                try {
+                    const message = args.join(' ');
+                    if (message.toLowerCase().includes('out of memory')) {
+                        this.reportCriticalError('Out of memory error detected', {
+                            type: 'memory_exhaustion',
+                            originalMessage: message
+                        });
+                    }
+                } catch (interceptError) {
+                    // Ignore errors in error interception
+                }
+                originalConsoleError.apply(console, args);
+            };
+        } catch (error) {
+            console.warn('ErrorManager: Failed to setup memory pressure detection:', error);
+        }
+    }
+
+    /**
+     * Check if an error is critical
+     */
+    _isCriticalError(error, context) {
+        if (!error) return false;
+
+        const message = (error.message || error.toString() || '').toLowerCase();
+        const criticalPatterns = [
+            'out of memory',
+            'maximum call stack',
+            'script error',
+            'network error',
+            'security error',
+            'gamestate',
+            'savemanager',
+            'viewmanager',
+            'uimanager'
+        ];
+
+        return criticalPatterns.some(pattern => message.includes(pattern));
+    }
+
+    /**
+     * Check if a promise rejection is critical
+     */
+    _isCriticalPromiseRejection(reason, context) {
+        if (!reason) return false;
+
+        const message = String(reason).toLowerCase();
+        const criticalPatterns = [
+            'failed to load',
+            'network',
+            'fetch',
+            'initialization',
+            'critical'
+        ];
+
+        return criticalPatterns.some(pattern => message.includes(pattern));
+    }
+
+    /**
+     * Enhanced error boundary for wrapping functions
+     */
+    wrapWithErrorBoundary(fn, context = {}) {
+        return (...args) => {
+            try {
+                const result = fn.apply(this, args);
+
+                // Handle promises
+                if (result && typeof result.catch === 'function') {
+                    return result.catch(error => {
+                        this.reportError(error, {
+                            ...context,
+                            type: 'async_function_error',
+                            functionName: fn.name || 'anonymous',
+                            args: args.length
+                        }, this.categories.SYSTEM);
+                        throw error; // Re-throw to maintain promise chain
+                    });
+                }
+
+                return result;
+            } catch (error) {
+                this.reportError(error, {
+                    ...context,
+                    type: 'sync_function_error',
+                    functionName: fn.name || 'anonymous',
+                    args: args.length
+                }, this.categories.SYSTEM);
+                throw error; // Re-throw to maintain error handling
+            }
+        };
+    }
+
+    /**
+     * Create error boundary for components
+     */
+    createComponentErrorBoundary(componentName) {
+        return {
+            wrapMethod: (methodName, originalMethod) => {
+                return this.wrapWithErrorBoundary(originalMethod, {
+                    component: componentName,
+                    method: methodName
+                });
+            },
+
+            wrapClass: (ClassConstructor) => {
+                // Wrap all methods of a class with error boundaries
+                const methods = Object.getOwnPropertyNames(ClassConstructor.prototype);
+                methods.forEach(methodName => {
+                    if (methodName !== 'constructor' && typeof ClassConstructor.prototype[methodName] === 'function') {
+                        const originalMethod = ClassConstructor.prototype[methodName];
+                        ClassConstructor.prototype[methodName] = this.wrapWithErrorBoundary(originalMethod, {
+                            component: componentName,
+                            method: methodName
+                        });
+                    }
+                });
+                return ClassConstructor;
+            }
+        };
     }
 }
 
