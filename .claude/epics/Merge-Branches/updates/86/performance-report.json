@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-09-20T17:07:00.923Z",
+  "systemPerformance": {
+    "PowerCalculator: Complete power calculation": {
+      "opsPerSec": 4050448.191735677,
+      "meanTime": 0,
+      "rme": 7.897116610235318
+    },
+    "CombatSystem: Damage calculation": {
+      "opsPerSec": 2973546.469532594,
+      "meanTime": 0,
+      "rme": 2.834771713279757
+    },
+    "CP Systems: All 8 systems processing": {
+      "opsPerSec": 1098802.0848408493,
+      "meanTime": 0,
+      "rme": 3.72779418488635
+    },
+    "MMORPG Systems: Quest and achievement updates": {
+      "opsPerSec": 20677568.08065416,
+      "meanTime": 0,
+      "rme": 3.31567010631454
+    },
+    "UI Framework: State change propagation": {
+      "opsPerSec": 1476291.7826930468,
+      "meanTime": 0,
+      "rme": 2.872108621671571
+    },
+    "SaveManager: Game state serialization": {
+      "opsPerSec": 36666.995686158334,
+      "meanTime": 0.03,
+      "rme": 4.3505256868997675
+    },
+    "EventManager: Event propagation": {
+      "opsPerSec": 11151816.062338922,
+      "meanTime": 0,
+      "rme": 4.9135109720609895
+    },
+    "Idle Processing: 1 hour simulation": {
+      "opsPerSec": 117987459.88123344,
+      "meanTime": 0,
+      "rme": 9.392077435970755
+    }
+  },
+  "targetValidation": {
+    "fps": {
+      "target": 60,
+      "actual": 66,
+      "passed": true
+    },
+    "responseTime": {
+      "target": 10,
+      "actual": 0.0008210000000000016,
+      "passed": true
+    },
+    "memoryUsage": {
+      "target": 100,
+      "actual": 9.704139709472656,
+      "passed": true
+    },
+    "cpuUsage": {
+      "target": 20,
+      "actual": 0,
+      "passed": true
+    }
+  },
+  "overallScore": 100
+}
