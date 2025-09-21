@@ -362,7 +362,18 @@ class IdleCultivationGame {
                     name: 'UI Module',
                     init: async () => {
                         console.log('UI Module initialized');
-                        // Initialize UI systems here
+
+                        // Make core systems globally available for UI
+                        window.eventManager = context.eventManager;
+                        window.gameState = context.gameState;
+                        window.timeManager = context.timeManager;
+
+                        // Initialize ViewIntegration
+                        if (typeof ViewIntegration !== 'undefined') {
+                            const viewIntegration = new ViewIntegration();
+                            await viewIntegration.initialize();
+                            window.viewIntegration = viewIntegration;
+                        }
                     },
                     update: (deltaTime) => {
                         // Update UI elements

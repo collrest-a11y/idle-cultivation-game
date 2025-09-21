@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Game Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+        .loading { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Simple Game Loading Test</h1>
+    <div id="status"></div>
+    <div id="game-container"></div>
+
+    <script>
+        const status = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            status.appendChild(div);
+            console.log(message);
+        }
+
+        // Catch all errors
+        window.addEventListener('error', function(e) {
+            log(`ERROR: ${e.message} at ${e.filename}:${e.lineno}`, 'error');
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            log(`PROMISE REJECTION: ${e.reason}`, 'error');
+        });
+
+        log('Starting simple test...', 'loading');
+
+        // Test basic page content
+        document.getElementById('game-container').innerHTML = `
+            <div style="border: 1px solid #ccc; padding: 20px; margin: 20px 0;">
+                <h2>Basic HTML Test</h2>
+                <p>This HTML is rendering correctly.</p>
+                <button onclick="testJS()">Test JavaScript</button>
+            </div>
+        `;
+
+        function testJS() {
+            log('JavaScript is working!', 'success');
+
+            // Test console methods
+            console.log('Testing console.log');
+            console.error('Testing console.error');
+
+            // Try to load one core script
+            log('Attempting to load GameState...', 'loading');
+
+            const script = document.createElement('script');
+            script.src = '/js/core/GameState.js';
+            script.onload = function() {
+                log('GameState loaded successfully', 'success');
+                if (window.GameState) {
+                    log('GameState class available', 'success');
+                } else {
+                    log('GameState class not found on window', 'error');
+                }
+            };
+            script.onerror = function() {
+                log('Failed to load GameState', 'error');
+            };
+            document.head.appendChild(script);
+        }
+
+        log('Simple test page ready', 'success');
+    </script>
+</body>
+</html>

@@ -733,7 +733,9 @@ class MainMenuView extends GameView {
         } else {
             this.notifications.slice(0, 5).forEach(notification => {
                 const notificationItem = this.createNotificationItem(notification);
-                notificationsList.appendChild(notificationItem);
+                if (notificationItem) {
+                    notificationsList.appendChild(notificationItem);
+                }
             });
 
             if (this.notifications.length > 5) {
@@ -749,22 +751,27 @@ class MainMenuView extends GameView {
      * Create notification item
      */
     createNotificationItem(notification) {
-        const item = document.createElement('div');
-        item.className = `notification-item ${notification.type} ${notification.read ? 'read' : 'unread'}`;
+        if (!notification) {
+            console.warn('MainMenuView: Attempted to create notification item with undefined notification');
+            return null;
+        }
 
-        const timeAgo = this.formatTimeAgo(notification.timestamp);
+        const item = document.createElement('div');
+        item.className = `notification-item ${notification.type || 'info'} ${notification.read ? 'read' : 'unread'}`;
+
+        const timeAgo = this.formatTimeAgo(notification.timestamp || Date.now());
 
         item.innerHTML = `
             <div class="notification-icon">
-                <span class="icon-${notification.type}"></span>
+                <span class="icon-${notification.type || 'info'}"></span>
             </div>
             <div class="notification-content">
-                <div class="notification-title">${notification.title}</div>
-                <div class="notification-message">${notification.message}</div>
+                <div class="notification-title">${notification.title || 'Notification'}</div>
+                <div class="notification-message">${notification.message || ''}</div>
                 <div class="notification-time">${timeAgo}</div>
             </div>
             <div class="notification-actions">
-                <button class="btn btn-sm dismiss-btn" data-notification-id="${notification.id}">
+                <button class="btn btn-sm dismiss-btn" data-notification-id="${notification.id || Date.now()}">
                     <span class="icon-x"></span>
                 </button>
             </div>

@@ -779,16 +779,7 @@ const SECT_ACHIEVEMENTS = {
     }
 };
 
-// Export all sect data for use by the sect system
-export {
-    SECT_ROLES,
-    SECT_TYPES,
-    SECT_FACILITIES,
-    SECT_ACTIVITIES,
-    COMPETITION_EVENTS,
-    DIPLOMACY_RELATIONS,
-    SECT_ACHIEVEMENTS
-};
+// Sect data exported via window object below for browser compatibility
 
 // Global window exports for non-module environments
 if (typeof window !== 'undefined') {

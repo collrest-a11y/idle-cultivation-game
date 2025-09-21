@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Full Game Loading Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .error { color: red; background: #ffe6e6; padding: 5px; margin: 2px 0; }
+        .success { color: green; background: #e6ffe6; padding: 5px; margin: 2px 0; }
+        .loading { color: blue; background: #e6f3ff; padding: 5px; margin: 2px 0; }
+        .warning { color: orange; background: #fff3e6; padding: 5px; margin: 2px 0; }
+        #status { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Full Game Loading Test</h1>
+    <div id="status"></div>
+    <button onclick="testFullGame()">Test Full Game Loading</button>
+
+    <script>
+        const status = document.getElementById('status');
+
+        // Store original console methods
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function log(message, type = 'loading') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            status.appendChild(div);
+            status.scrollTop = status.scrollHeight;
+            originalLog(message);
+        }
+
+        // Catch all errors
+        window.addEventListener('error', function(e) {
+            log(`ERROR: ${e.message} at ${e.filename}:${e.lineno}:${e.colno}`, 'error');
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            log(`PROMISE REJECTION: ${e.reason}`, 'error');
+        });
+
+        // Override console methods to capture logs
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            log(`LOG: ${args.join(' ')}`, 'loading');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            log(`ERROR: ${args.join(' ')}`, 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            log(`WARN: ${args.join(' ')}`, 'warning');
+        };
+
+        log('Full game loading test ready', 'success');
+
+        async function testFullGame() {
+            log('Starting full game loading test...', 'loading');
+
+            // List of all scripts in order
+            const scripts = [
+                'js/core/EventManager.js',
+                'js/core/ErrorManager.js',
+                'js/core/GameState.js',
+                'js/core/TimeManager.js',
+                'js/core/PerformanceMonitor.js',
+                'js/core/BalanceManager.js',
+                'js/core/AnimationManager.js',
+                'js/core/MobileManager.js',
+                'js/core/GameLoop.js',
+                'js/core/ModuleManager.js',
+                'js/core/SaveManager.js',
+                'js/core/DataValidator.js',
+                'js/core/MigrationManager.js',
+                'js/utils/Compression.js',
+                'js/data/cultivation-data.js',
+                'js/data/combat-data.js',
+                'js/data/sect-data.js',
+                'js/systems/CultivationSystem.js',
+                'js/systems/RealmManager.js',
+                'js/systems/TechniqueManager.js',
+                'js/systems/OfflineCalculator.js',
+                'js/systems/CultivationIntegration.js',
+                'js/systems/SectSystem.js',
+                'js/systems/SectManager.js',
+                'js/systems/SectActivities.js',
+                'js/systems/SectCompetition.js',
+                'js/systems/SectIntegration.js',
+                'js/ui/BaseComponent.js',
+                'js/ui/UIManager.js',
+                'js/views/GameView.js',
+                'js/views/ViewManager.js',
+                'js/views/MainMenuView.js',
+                'js/views/CultivationView.js',
+                'js/views/ScriptureView.js',
+                'js/views/CombatView.js',
+                'js/views/SectView.js',
+                'js/views/QuestView.js',
+                'js/views/ViewIntegration.js',
+                'js/systems/PowerCalculator.js',
+                'js/systems/MountSystem.js',
+                'js/systems/WingSystem.js',
+                'js/systems/AccessorySystem.js',
+                'js/systems/RuneSystem.js',
+                'js/systems/MeridianSystem.js',
+                'js/systems/DantianSystem.js',
+                'js/systems/SoulSystem.js',
+                'js/main.js'
+            ];
+
+            // Load scripts sequentially
+            for (const scriptSrc of scripts) {
+                try {
+                    await loadScript(scriptSrc);
+                    log(`✓ Loaded: ${scriptSrc}`, 'success');
+                } catch (error) {
+                    log(`✗ Failed to load: ${scriptSrc} - ${error.message}`, 'error');
+                    return; // Stop on first failure
+                }
+            }
+
+            log('All scripts loaded successfully!', 'success');
+
+            // Test game initialization
+            log('Testing game initialization...', 'loading');
+
+            try {
+                if (!window.IdleCultivationGame) {
+                    throw new Error('IdleCultivationGame class not found');
+                }
+
+                log('Creating game instance...', 'loading');
+                const game = new window.IdleCultivationGame();
+
+                log('Initializing game...', 'loading');
+                await game.init({
+                    debugMode: true,
+                    enableHotReload: false
+                });
+
+                log('🚀 GAME INITIALIZATION SUCCESSFUL!', 'success');
+
+            } catch (error) {
+                log(`Game initialization failed: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+            }
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`Failed to load ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+    </script>
+</body>
+</html>
