@@ -468,8 +468,60 @@
     <script src="js/systems/DantianSystem.js"></script>
     <script src="js/systems/SoulSystem.js"></script>
 
-    <!-- Legacy Game Logic -->
-    <script src="game.js"></script>
+    <!-- Character Creation Logic -->
+    <script>
+        // Character creation functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            let selectedChoices = {
+                origin: null,
+                vow: null,
+                mark: null
+            };
+
+            // Handle fragment choice clicks
+            document.querySelectorAll('.fragment-choice').forEach(button => {
+                button.addEventListener('click', () => {
+                    const category = button.closest('.fragment-choices').dataset.category;
+                    const choice = button.dataset.choice;
+
+                    // Remove active class from siblings
+                    button.closest('.fragment-choices').querySelectorAll('.fragment-choice').forEach(b => {
+                        b.classList.remove('active');
+                    });
+
+                    // Add active class to clicked button
+                    button.classList.add('active');
+
+                    // Store selection
+                    selectedChoices[category] = choice;
+
+                    // Check if all choices are made
+                    const beginBtn = document.getElementById('begin-cultivation');
+                    if (selectedChoices.origin && selectedChoices.vow && selectedChoices.mark) {
+                        beginBtn.disabled = false;
+                        beginBtn.classList.add('enabled');
+                    }
+                });
+            });
+
+            // Handle begin cultivation click
+            document.getElementById('begin-cultivation')?.addEventListener('click', () => {
+                if (selectedChoices.origin && selectedChoices.vow && selectedChoices.mark) {
+                    // Hide character creation
+                    document.getElementById('character-creation').style.display = 'none';
+
+                    // Show game interface
+                    const gameInterface = document.getElementById('game-interface');
+                    if (gameInterface) {
+                        gameInterface.classList.remove('hidden');
+                        gameInterface.style.display = 'block';
+                    }
+
+                    console.log('Character creation completed:', selectedChoices);
+                }
+            });
+        });
+    </script>
 
     <!-- Main Game Entry Point -->
     <script src="js/main.js"></script>
