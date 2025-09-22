@@ -368,7 +368,7 @@ class IdleCultivationGame {
                         if (typeof ViewIntegration !== 'undefined') {
                             try {
                                 const viewIntegration = new ViewIntegration();
-                                await viewIntegration.initialize(context.gameState, context.eventManager);
+                                await viewIntegration.initialize();
                                 module.viewIntegration = viewIntegration;
                                 console.log('ViewIntegration initialized successfully');
                             } catch (error) {
