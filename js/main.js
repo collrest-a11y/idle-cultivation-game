@@ -358,16 +358,42 @@ class IdleCultivationGame {
         // UI Module - handles all UI updates and interactions
         this.moduleManager.registerModule('ui', {
             factory: async (context) => {
-                return {
+                const module = {
                     name: 'UI Module',
                     init: async () => {
                         console.log('UI Module initialized');
                         // Initialize UI systems here
+
+                        // Initialize ViewIntegration if available
+                        if (typeof ViewIntegration !== 'undefined') {
+                            try {
+                                const viewIntegration = new ViewIntegration();
+                                await viewIntegration.initialize(context.gameState, context.eventManager);
+                                module.viewIntegration = viewIntegration;
+                                console.log('ViewIntegration initialized successfully');
+                            } catch (error) {
+                                console.warn('ViewIntegration initialization failed:', error);
+                                // Don't fail the entire module for view integration issues
+                            }
+                        }
                     },
                     update: (deltaTime) => {
                         // Update UI elements
+                        if (module.viewIntegration) {
+                            try {
+                                module.viewIntegration.update(deltaTime);
+                            } catch (error) {
+                                console.warn('ViewIntegration update error:', error);
+                            }
+                        }
+                    },
+                    shutdown: () => {
+                        if (module.viewIntegration) {
+                            module.viewIntegration.shutdown();
+                        }
                     }
                 };
+                return module;
             },
             dependencies: [],
             priority: 100
