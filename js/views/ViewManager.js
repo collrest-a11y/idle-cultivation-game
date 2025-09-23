@@ -485,8 +485,8 @@ class ViewManager {
             document.title = `${config.title} - Idle Cultivation`;
         }
 
-        // Update URL if using routing
-        if (this.currentView && history.pushState) {
+        // Update URL if using routing (but not on file:// protocol)
+        if (this.currentView && history.pushState && window.location.protocol !== 'file:') {
             const config = this.viewConfigs.get(this.currentView.viewId);
             history.pushState({ viewId: this.currentView.viewId }, config.title, config.route);
         }

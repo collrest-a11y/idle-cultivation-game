@@ -472,17 +472,25 @@
     <script>
         // Character creation functionality
         document.addEventListener('DOMContentLoaded', () => {
-            let selectedChoices = {
-                origin: null,
-                vow: null,
-                mark: null
-            };
+            console.log('CHARACTER DEBUG: DOMContentLoaded fired for character creation');
+
+            // Wait for game to be ready before setting up character creation
+            function setupCharacterCreation() {
+                console.log('CHARACTER DEBUG: Setting up character creation after game ready');
+                let selectedChoices = {
+                    origin: null,
+                    vow: null,
+                    mark: null
+                };
+                console.log('CHARACTER DEBUG: Initial selectedChoices:', selectedChoices);
 
             // Handle fragment choice clicks
             document.querySelectorAll('.fragment-choice').forEach(button => {
+                console.log('CHARACTER DEBUG: Adding listener to button:', button.dataset.choice);
                 button.addEventListener('click', () => {
                     const category = button.closest('.fragment-choices').dataset.category;
                     const choice = button.dataset.choice;
+                    console.log('CHARACTER DEBUG: Button clicked:', choice, 'category:', category);
 
                     // Remove active class from siblings
                     button.closest('.fragment-choices').querySelectorAll('.fragment-choice').forEach(b => {
@@ -494,12 +502,19 @@
 
                     // Store selection
                     selectedChoices[category] = choice;
+                    console.log('CHARACTER DEBUG: Updated selectedChoices:', selectedChoices);
 
                     // Check if all choices are made
                     const beginBtn = document.getElementById('begin-cultivation');
-                    if (selectedChoices.origin && selectedChoices.vow && selectedChoices.mark) {
+                    const allSelected = selectedChoices.origin && selectedChoices.vow && selectedChoices.mark;
+                    console.log('CHARACTER DEBUG: All selected?', allSelected, 'origin:', selectedChoices.origin, 'vow:', selectedChoices.vow, 'mark:', selectedChoices.mark);
+
+                    if (allSelected) {
+                        console.log('CHARACTER DEBUG: Enabling begin button');
                         beginBtn.disabled = false;
                         beginBtn.classList.add('enabled');
+                    } else {
+                        console.log('CHARACTER DEBUG: Begin button still disabled');
                     }
                 });
             });
@@ -507,19 +522,106 @@
             // Handle begin cultivation click
             document.getElementById('begin-cultivation')?.addEventListener('click', () => {
                 if (selectedChoices.origin && selectedChoices.vow && selectedChoices.mark) {
-                    // Hide character creation
-                    document.getElementById('character-creation').style.display = 'none';
-
-                    // Show game interface
-                    const gameInterface = document.getElementById('game-interface');
-                    if (gameInterface) {
-                        gameInterface.classList.remove('hidden');
-                        gameInterface.style.display = 'block';
-                    }
-
                     console.log('Character creation completed:', selectedChoices);
+
+                    // Emit character created event for the game system
+                    if (window.eventManager && typeof window.eventManager.emit === 'function') {
+                        window.eventManager.emit('character:created', {
+                            origin: selectedChoices.origin,
+                            vow: selectedChoices.vow,
+                            mark: selectedChoices.mark
+                        });
+                    } else {
+                        // Fallback for when eventManager isn't available yet
+                        console.log('EventManager not available, using direct transition');
+                        document.getElementById('character-creation').style.display = 'none';
+                        const gameInterface = document.getElementById('game-interface');
+                        if (gameInterface) {
+                            gameInterface.classList.remove('hidden');
+                            gameInterface.style.display = 'block';
+                        }
+                    }
                 }
             });
+            }
+
+            // Simple polling approach to monitor button states
+            console.log('CHARACTER DEBUG: Starting simple polling approach...');
+
+            // Add simple click handlers to make buttons active when clicked
+            setTimeout(() => {
+                console.log('CHARACTER DEBUG: Setting up simple click handlers...');
+                document.querySelectorAll('.fragment-choice').forEach(button => {
+                    button.onclick = function(e) {
+                        e.preventDefault();
+                        console.log('CHARACTER DEBUG: Simple click on:', this.dataset.choice);
+
+                        // Remove active from siblings in same category
+                        const category = this.closest('.fragment-choices');
+                        category.querySelectorAll('.fragment-choice').forEach(b => {
+                            b.classList.remove('active');
+                        });
+
+                        // Add active to clicked button
+                        this.classList.add('active');
+                        console.log('CHARACTER DEBUG: Added active class to:', this.dataset.choice);
+                    };
+                });
+            }, 1000);
+
+            let selectedChoices = {
+                origin: null,
+                vow: null,
+                mark: null
+            };
+
+            function checkButtonStates() {
+                // Check which buttons are active
+                const originActive = document.querySelector('[data-category="origin"] .fragment-choice.active');
+                const vowActive = document.querySelector('[data-category="vow"] .fragment-choice.active');
+                const markActive = document.querySelector('[data-category="mark"] .fragment-choice.active');
+
+                // Update selected choices
+                selectedChoices.origin = originActive ? originActive.dataset.choice : null;
+                selectedChoices.vow = vowActive ? vowActive.dataset.choice : null;
+                selectedChoices.mark = markActive ? markActive.dataset.choice : null;
+
+                // Check if all are selected
+                const allSelected = selectedChoices.origin && selectedChoices.vow && selectedChoices.mark;
+                const beginBtn = document.getElementById('begin-cultivation');
+
+                if (beginBtn) {
+                    if (allSelected && beginBtn.disabled) {
+                        console.log('CHARACTER DEBUG: All choices made, enabling button');
+                        beginBtn.disabled = false;
+                        beginBtn.classList.add('enabled');
+
+                        // Set up the begin button click handler
+                        beginBtn.onclick = () => {
+                            console.log('Character creation completed:', selectedChoices);
+
+                            // Emit character created event for the game system
+                            if (window.eventManager && typeof window.eventManager.emit === 'function') {
+                                window.eventManager.emit('character:created', selectedChoices);
+                            } else {
+                                // Fallback: direct transition
+                                document.getElementById('character-creation').style.display = 'none';
+                                const gameInterface = document.getElementById('game-interface');
+                                if (gameInterface) {
+                                    gameInterface.classList.remove('hidden');
+                                    gameInterface.style.display = 'block';
+                                }
+                            }
+                        };
+                    } else if (!allSelected && !beginBtn.disabled) {
+                        beginBtn.disabled = true;
+                        beginBtn.classList.remove('enabled');
+                    }
+                }
+            }
+
+            // Start polling every 100ms
+            setInterval(checkButtonStates, 100);
         });
     </script>
 

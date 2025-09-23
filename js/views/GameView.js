@@ -132,7 +132,11 @@ class GameView extends BaseComponent {
     _handleViewError(error, context = '') {
         this.hasErrors = true;
         this.errorCount++;
-        this.renderStats.errors++;
+
+        // Ensure renderStats exists before incrementing
+        if (this.renderStats) {
+            this.renderStats.errors++;
+        }
 
         console.error(`GameView[${this.viewId}]: Error in ${context}:`, error);
 
