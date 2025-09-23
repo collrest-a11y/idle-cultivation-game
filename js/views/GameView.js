@@ -16,6 +16,8 @@ class GameView extends BaseComponent {
         this.isLoading = false;
         this.lastActivated = null;
         this.lastDeactivated = null;
+        this.hasErrors = false;
+        this.errorCount = 0;
 
         // Data refresh settings
         this.autoRefresh = true;
@@ -27,13 +29,18 @@ class GameView extends BaseComponent {
         this.content = null;
         this.footer = null;
         this.loadingOverlay = null;
+        this.errorOverlay = null;
 
         // Performance tracking
         this.renderStats = {
             totalRenders: 0,
             averageRenderTime: 0,
-            dataUpdates: 0
+            dataUpdates: 0,
+            errors: 0
         };
+
+        // Error boundary setup
+        this._setupErrorBoundary();
     }
 
     /**
@@ -58,6 +65,8 @@ class GameView extends BaseComponent {
         return {
             ...super.getInitialState(),
             isLoading: false,
+            hasErrors: false,
+            errorCount: 0,
             data: {},
             filters: {},
             selectedItem: null,
@@ -69,51 +78,220 @@ class GameView extends BaseComponent {
      * Create the view's DOM structure
      */
     createElement() {
-        this.element = document.createElement('div');
-        this.element.className = `game-view view-${this.viewId}`;
-        this.element.setAttribute('data-view-id', this.viewId);
-        this.element.setAttribute('role', 'main');
-        this.element.setAttribute('aria-label', this.config.title || 'Game View');
+        try {
+            this.element = document.createElement('div');
+            this.element.className = `game-view view-${this.viewId}`;
+            this.element.setAttribute('data-view-id', this.viewId);
+            this.element.setAttribute('role', 'main');
+            this.element.setAttribute('aria-label', this.config.title || 'Game View');
 
-        // Apply responsive and accessibility classes
-        if (this.options.responsive) {
-            this.element.classList.add('responsive');
+            // Apply responsive and accessibility classes
+            if (this.options.responsive) {
+                this.element.classList.add('responsive');
+            }
+
+            if (this.options.accessible) {
+                this.element.classList.add('accessible');
+            }
+
+            // Create view structure
+            this.createViewStructure();
+
+            // Initially hidden
+            this.element.style.display = 'none';
+
+            console.log(`GameView: Created element for view ${this.viewId}`);
+        } catch (error) {
+            this._handleViewError(error, 'createElement');
+            // Create fallback element
+            this._createFallbackElement();
+        }
+    }
+
+    /**
+     * Setup error boundary for this view
+     */
+    _setupErrorBoundary() {
+        if (window.errorManager) {
+            this.errorBoundary = window.errorManager.createComponentErrorBoundary(this.viewId);
+
+            // Wrap critical methods
+            const criticalMethods = ['render', 'loadData', 'activate', 'deactivate', 'update'];
+            criticalMethods.forEach(methodName => {
+                if (typeof this[methodName] === 'function') {
+                    const originalMethod = this[methodName];
+                    this[methodName] = this.errorBoundary.wrapMethod(methodName, originalMethod.bind(this));
+                }
+            });
+        }
+    }
+
+    /**
+     * Handle view-specific errors
+     */
+    _handleViewError(error, context = '') {
+        this.hasErrors = true;
+        this.errorCount++;
+
+        // Ensure renderStats exists before incrementing
+        if (this.renderStats) {
+            this.renderStats.errors++;
         }
 
-        if (this.options.accessible) {
-            this.element.classList.add('accessible');
+        console.error(`GameView[${this.viewId}]: Error in ${context}:`, error);
+
+        if (window.errorManager) {
+            window.errorManager.reportError(error, {
+                component: `GameView[${this.viewId}]`,
+                context,
+                viewActive: this.isActive,
+                errorCount: this.errorCount
+            }, 'ui');
         }
 
-        // Create view structure
-        this.createViewStructure();
+        // Show error overlay if view is active
+        if (this.isActive) {
+            this._showErrorOverlay(error, context);
+        }
+    }
 
-        // Initially hidden
-        this.element.style.display = 'none';
+    /**
+     * Create fallback element when main creation fails
+     */
+    _createFallbackElement() {
+        try {
+            this.element = document.createElement('div');
+            this.element.className = `game-view view-${this.viewId} fallback-view`;
+            this.element.innerHTML = `
+                <div class="fallback-content">
+                    <h2>View Error</h2>
+                    <p>There was an error loading the ${this.viewId} view.</p>
+                    <button class="btn btn-primary retry-btn">Retry</button>
+                </div>
+            `;
+
+            const retryBtn = this.element.querySelector('.retry-btn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', () => {
+                    try {
+                        this.hasErrors = false;
+                        this.createElement();
+                        this.render();
+                    } catch (retryError) {
+                        console.error(`GameView[${this.viewId}]: Retry failed:`, retryError);
+                    }
+                });
+            }
+
+            console.log(`GameView: Created fallback element for view ${this.viewId}`);
+        } catch (fallbackError) {
+            console.error(`GameView[${this.viewId}]: Failed to create fallback element:`, fallbackError);
+            // Ultimate fallback
+            this.element = document.createElement('div');
+            this.element.className = 'game-view error-view';
+            this.element.textContent = 'Critical view error - please refresh the page';
+        }
+    }
+
+    /**
+     * Show error overlay
+     */
+    _showErrorOverlay(error, context) {
+        try {
+            if (this.errorOverlay) {
+                this.errorOverlay.remove();
+            }
+
+            this.errorOverlay = document.createElement('div');
+            this.errorOverlay.className = 'error-overlay';
+            this.errorOverlay.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(255, 0, 0, 0.1);
+                border: 2px solid #ff4444;
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #ff4444;
+                text-align: center;
+                padding: 20px;
+            `;
+
+            this.errorOverlay.innerHTML = `
+                <div class="error-content">
+                    <h3>View Error</h3>
+                    <p>Error in ${context}: ${error.message}</p>
+                    <button class="btn btn-secondary dismiss-error-btn">Dismiss</button>
+                </div>
+            `;
+
+            const dismissBtn = this.errorOverlay.querySelector('.dismiss-error-btn');
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', () => {
+                    if (this.errorOverlay) {
+                        this.errorOverlay.remove();
+                        this.errorOverlay = null;
+                    }
+                });
+            }
+
+            if (this.element) {
+                this.element.appendChild(this.errorOverlay);
+            }
+
+            // Auto-dismiss after 10 seconds
+            setTimeout(() => {
+                if (this.errorOverlay) {
+                    this.errorOverlay.remove();
+                    this.errorOverlay = null;
+                }
+            }, 10000);
+        } catch (overlayError) {
+            console.error(`GameView[${this.viewId}]: Failed to show error overlay:`, overlayError);
+        }
     }
 
     /**
      * Create the basic view structure
      */
     createViewStructure() {
-        // Create header
-        if (this.options.showHeader) {
-            this.header = this.createHeader();
-            this.element.appendChild(this.header);
+        try {
+            // Create header
+            if (this.options.showHeader) {
+                this.header = this.createHeader();
+                if (this.header) {
+                    this.element.appendChild(this.header);
+                }
+            }
+
+            // Create main content
+            this.content = this.createContent();
+            if (this.content) {
+                this.element.appendChild(this.content);
+            }
+
+            // Create footer
+            if (this.options.showFooter) {
+                this.footer = this.createFooter();
+                if (this.footer) {
+                    this.element.appendChild(this.footer);
+                }
+            }
+
+            // Create loading overlay
+            this.loadingOverlay = this.createLoadingOverlay();
+            if (this.loadingOverlay) {
+                this.element.appendChild(this.loadingOverlay);
+            }
+
+            console.log(`GameView: View structure created for ${this.viewId}`);
+        } catch (error) {
+            this._handleViewError(error, 'createViewStructure');
         }
-
-        // Create main content area
-        this.content = this.createContent();
-        this.element.appendChild(this.content);
-
-        // Create footer
-        if (this.options.showFooter) {
-            this.footer = this.createFooter();
-            this.element.appendChild(this.footer);
-        }
-
-        // Create loading overlay
-        this.loadingOverlay = this.createLoadingOverlay();
-        this.element.appendChild(this.loadingOverlay);
     }
 
     /**

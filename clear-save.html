@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Save Data</title>
+</head>
+<body>
+    <h1>Clear Game Save Data</h1>
+    <p>This will clear all localStorage data for the Idle Cultivation Game.</p>
+    <button onclick="clearSave()">Clear Save Data</button>
+    <div id="result"></div>
+
+    <script>
+        function clearSave() {
+            try {
+                // Clear all localStorage keys related to the game
+                const keys = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('idleCultivationGame') || key.includes('cultivation') || key.includes('gameState'))) {
+                        keys.push(key);
+                    }
+                }
+
+                keys.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log('Removed:', key);
+                });
+
+                // Also clear everything just to be sure
+                localStorage.clear();
+
+                document.getElementById('result').innerHTML =
+                    `<p style="color: green;">✓ Cleared ${keys.length} save data keys and all localStorage data.</p>
+                     <p>You can now go back to the game and it should start fresh.</p>
+                     <p><a href="/">Back to Game</a></p>`;
+            } catch (error) {
+                document.getElementById('result').innerHTML =
+                    `<p style="color: red;">✗ Error clearing save data: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

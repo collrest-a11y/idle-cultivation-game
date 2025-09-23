@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Game Loading - Error Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #222;
+            color: #fff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+        .error {
+            color: #ff4444;
+        }
+        .success {
+            color: #44ff44;
+        }
+        .warning {
+            color: #ffaa44;
+        }
+        #console-log {
+            background: #111;
+            padding: 10px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Game Loading Test</h1>
+
+    <div class="test-section">
+        <h2>Error Detection Test</h2>
+        <div id="error-status">Initializing...</div>
+        <div id="console-log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Critical Components</h2>
+        <div id="component-status">Checking...</div>
+    </div>
+
+    <!-- Add minimal game containers for testing -->
+    <div id="character-creation" class="hidden" style="display: none;">
+        <h3>Character Creation Test</h3>
+    </div>
+
+    <div id="game-interface" class="hidden" style="display: none;">
+        <h3>Game Interface Test</h3>
+    </div>
+
+    <!-- Load core files to test -->
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/core/TimeManager.js"></script>
+    <script src="js/core/ErrorManager.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/ui/BaseComponent.js"></script>
+    <script src="js/ui/UIManager.js"></script>
+    <script src="js/views/GameView.js"></script>
+    <script src="js/views/ViewManager.js"></script>
+    <script src="js/views/ViewIntegration.js"></script>
+    <script src="js/views/MainMenuView.js"></script>
+    <script src="js/main.js"></script>
+
+    <script>
+        // Test script to check for errors
+        const consoleLog = document.getElementById('console-log');
+        const errorStatus = document.getElementById('error-status');
+        const componentStatus = document.getElementById('component-status');
+
+        let errorCount = 0;
+        let warningCount = 0;
+
+        // Capture console messages
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleLog = console.log;
+
+        function addToLog(type, message) {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`;
+            consoleLog.appendChild(div);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        console.error = function(...args) {
+            errorCount++;
+            addToLog('error', args.join(' '));
+            originalConsoleError.apply(console, args);
+            updateStatus();
+        };
+
+        console.warn = function(...args) {
+            warningCount++;
+            addToLog('warning', args.join(' '));
+            originalConsoleWarn.apply(console, args);
+            updateStatus();
+        };
+
+        console.log = function(...args) {
+            addToLog('success', args.join(' '));
+            originalConsoleLog.apply(console, args);
+        };
+
+        function updateStatus() {
+            if (errorCount === 0 && warningCount === 0) {
+                errorStatus.innerHTML = '<span class="success">✅ No errors detected</span>';
+            } else {
+                errorStatus.innerHTML = `<span class="error">❌ ${errorCount} errors</span>, <span class="warning">⚠️ ${warningCount} warnings</span>`;
+            }
+        }
+
+        // Test critical components
+        function testComponents() {
+            const tests = [];
+
+            // Test class availability
+            const classes = ['SaveManager', 'EventManager', 'GameState', 'TimeManager', 'ErrorManager', 'GameLoop', 'ModuleManager', 'BaseComponent', 'UIManager', 'GameView', 'ViewManager', 'ViewIntegration', 'MainMenuView', 'IdleCultivationGame'];
+
+            classes.forEach(className => {
+                if (typeof window[className] !== 'undefined') {
+                    tests.push(`✅ ${className} loaded`);
+                } else {
+                    tests.push(`❌ ${className} missing`);
+                }
+            });
+
+            // Test DOM elements
+            const elements = ['character-creation', 'game-interface'];
+            elements.forEach(id => {
+                if (document.getElementById(id)) {
+                    tests.push(`✅ DOM element #${id} found`);
+                } else {
+                    tests.push(`❌ DOM element #${id} missing`);
+                }
+            });
+
+            componentStatus.innerHTML = tests.join('<br>');
+        }
+
+        // Test initialization
+        async function testInitialization() {
+            try {
+                addToLog('success', 'Starting initialization test...');
+
+                // Test ErrorManager first
+                if (typeof ErrorManager !== 'undefined') {
+                    const errorManager = new ErrorManager();
+                    errorManager.initialize({});
+                    window.errorManager = errorManager;
+                    addToLog('success', 'ErrorManager initialized');
+                } else {
+                    addToLog('error', 'ErrorManager not available');
+                }
+
+                // Test Game initialization (but don't auto-start)
+                if (typeof IdleCultivationGame !== 'undefined') {
+                    addToLog('success', 'Found IdleCultivationGame class, testing constructor...');
+                    const game = new IdleCultivationGame();
+                    addToLog('success', 'Game instance created successfully');
+
+                    // Test core systems without full initialization
+                    addToLog('success', 'Testing core system availability...');
+
+                    if (typeof EventManager !== 'undefined') {
+                        const eventManager = new EventManager();
+                        window.eventManager = eventManager;
+                        addToLog('success', 'EventManager available');
+                    }
+
+                    if (typeof GameState !== 'undefined') {
+                        const gameState = new GameState();
+                        window.gameState = gameState;
+                        addToLog('success', 'GameState available');
+                    }
+                } else {
+                    addToLog('warning', 'IdleCultivationGame not available, testing components individually');
+                }
+
+                // Test ViewIntegration independently
+                if (typeof ViewIntegration !== 'undefined') {
+                    addToLog('success', 'Testing ViewIntegration...');
+                    const viewIntegration = new ViewIntegration();
+                    // Don't initialize fully, just test constructor
+                    addToLog('success', 'ViewIntegration constructor works');
+                }
+
+                addToLog('success', 'Initialization test completed');
+
+            } catch (error) {
+                addToLog('error', `Initialization failed: ${error.message}`);
+                console.error('Full error:', error);
+            }
+        }
+
+        // Run tests
+        window.addEventListener('load', () => {
+            testComponents();
+            testInitialization();
+            updateStatus();
+        });
+
+        // Report final status after 5 seconds
+        setTimeout(() => {
+            addToLog('success', `Test completed: ${errorCount} errors, ${warningCount} warnings`);
+            if (errorCount === 0) {
+                addToLog('success', '🎉 Game components loaded successfully with zero errors!');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+{
+  "timestamp": "2025-09-20T22:49:09.620Z",
+  "summary": {
+    "passed": 31,
+    "failed": 3,
+    "total": 34,
+    "details": {
+      "Character System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Combat System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Equipment System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Skills System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Quest System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Inventory System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Market System": {
+        "status": "FAIL",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Social System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Guild System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Dungeon System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "PvP System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Arena System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Achievement System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Leaderboard System": {
+        "status": "FAIL",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Chat System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Notification System": {
+        "status": "PASS",
+        "category": "MMORPG",
+        "time": 1758408549619
+      },
+      "Mount System": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549619
+      },
+      "Wings System": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549620
+      },
+      "Accessories System": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549620
+      },
+      "Runes System": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549620
+      },
+      "Meridians System": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549620
+      },
+      "Dantian System": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549620
+      },
+      "Soul System": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549620
+      },
+      "Cultivation Realms": {
+        "status": "PASS",
+        "category": "CP_Progression",
+        "time": 1758408549620
+      },
+      "GameState Management": {
+        "status": "PASS",
+        "category": "Core",
+        "time": 1758408549620
+      },
+      "EventManager": {
+        "status": "FAIL",
+        "category": "Core",
+        "time": 1758408549620
+      },
+      "PowerCalculator": {
+        "status": "PASS",
+        "category": "Core",
+        "time": 1758408549620
+      },
+      "UI Framework": {
+        "status": "PASS",
+        "category": "Core",
+        "time": 1758408549620
+      },
+      "New Player Registration": {
+        "status": "PASS",
+        "category": "User_Journey",
+        "time": 1758408549620
+      },
+      "Character Creation": {
+        "status": "PASS",
+        "category": "User_Journey",
+        "time": 1758408549620
+      },
+      "First Combat Experience": {
+        "status": "PASS",
+        "category": "User_Journey",
+        "time": 1758408549620
+      },
+      "Equipment Acquisition": {
+        "status": "PASS",
+        "category": "User_Journey",
+        "time": 1758408549620
+      },
+      "Cultivation Progression": {
+        "status": "PASS",
+        "category": "User_Journey",
+        "time": 1758408549620
+      },
+      "Save/Load Functionality": {
+        "status": "PASS",
+        "category": "User_Journey",
+        "time": 1758408549620
+      }
+    }
+  },
+  "successRate": 91.17647058823529,
+  "status": "FAIL"
+}

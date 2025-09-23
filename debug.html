@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .error { color: red; background: #ffe6e6; padding: 10px; margin: 10px 0; }
+        .log { color: green; background: #e6ffe6; padding: 5px; margin: 5px 0; }
+        .info { color: blue; background: #e6f3ff; padding: 5px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Game Debug Console</h1>
+    <div id="output"></div>
+
+    <h2>Test Game Loading</h2>
+    <button onclick="testGame()">Load Game Scripts</button>
+    <div id="test-result"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        const testResult = document.getElementById('test-result');
+
+        // Capture all console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addOutput(type, message) {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addOutput('log', args.join(' '));
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addOutput('error', args.join(' '));
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addOutput('error', args.join(' '));
+        };
+
+        // Capture uncaught errors
+        window.addEventListener('error', function(e) {
+            addOutput('error', `Uncaught Error: ${e.message} at ${e.filename}:${e.lineno}:${e.colno}`);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            addOutput('error', `Unhandled Promise Rejection: ${e.reason}`);
+        });
+
+        addOutput('info', 'Debug console ready. Click "Load Game Scripts" to test game loading.');
+
+        function testGame() {
+            testResult.innerHTML = '<p>Loading game scripts...</p>';
+            addOutput('info', 'Starting game script loading test...');
+
+            // Try to load the main game
+            const iframe = document.createElement('iframe');
+            iframe.src = '/';
+            iframe.style.width = '800px';
+            iframe.style.height = '600px';
+            iframe.style.border = '1px solid #ccc';
+
+            iframe.onload = function() {
+                addOutput('info', 'Game iframe loaded');
+
+                // Check if there are any errors in the iframe
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    const gameContent = iframeDoc.body.innerHTML;
+
+                    if (gameContent.includes('Game Failed to Load')) {
+                        addOutput('error', 'Game failed to load - error message detected');
+                    } else if (gameContent.trim() === '' || gameContent.length < 100) {
+                        addOutput('error', 'Game appears to be blank or minimal content');
+                        addOutput('info', `Content length: ${gameContent.length} characters`);
+                    } else {
+                        addOutput('log', 'Game appears to have loaded with content');
+                        addOutput('info', `Content length: ${gameContent.length} characters`);
+                    }
+                } catch (err) {
+                    addOutput('error', `Cannot access iframe content: ${err.message}`);
+                }
+            };
+
+            iframe.onerror = function() {
+                addOutput('error', 'Failed to load game iframe');
+            };
+
+            testResult.appendChild(iframe);
+        }
+    </script>
+</body>
+</html>
