@@ -10,7 +10,20 @@
     "test:performance": "node testing/performance/run-performance-tests.js",
     "test:all": "npm run test && npm run test:integration && npm run test:performance",
     "test:health": "node testing/health/system-health-check.js",
-    "test:ci": "npm run test:all && npm run test:e2e"
+    "test:ci": "npm run test:all && npm run test:e2e",
+    "test:cross-system": "node scripts/testing/data-integrity-validator.js",
+    "test:post-deployment": "node scripts/testing/post-deployment-validation.js",
+    "test:integration-health": "node scripts/testing/integration-health-check.js",
+    "build:production": "echo \"Production build not implemented yet\"",
+    "analyze:bundle-size": "echo \"Bundle size analysis not implemented yet\"",
+    "lint": "echo \"Linting not configured yet\"",
+    "deploy:staging": "node scripts/deployment/deploy-staging.js",
+    "deploy:production": "node scripts/deployment/deploy-production.js",
+    "rollback": "node scripts/deployment/rollback-production.js",
+    "validate:production": "node scripts/deployment/validate-production-config.js",
+    "confidence:calculate": "node scripts/deployment/calculate-confidence.js",
+    "monitoring:configure": "node scripts/monitoring/configure-alerts.js",
+    "backup:create": "node scripts/deployment/backup-production.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

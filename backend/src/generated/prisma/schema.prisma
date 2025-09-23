@@ -1,0 +1,646 @@
+// Prisma schema for Idle Cultivation Game
+// PostgreSQL 16 database with optimized schema for cultivation game mechanics
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// CORE USER AND AUTHENTICATION MODELS
+// =============================================================================
+
+model User {
+  id           String @id @default(cuid())
+  username     String @unique @db.VarChar(50)
+  email        String @unique @db.VarChar(255)
+  passwordHash String @db.VarChar(255)
+
+  // Profile information
+  displayName String  @db.VarChar(100)
+  avatar      String? @db.VarChar(500)
+  title       String? @db.VarChar(100)
+  biography   String? @db.Text
+
+  // Preferences
+  autoSave      Boolean @default(true)
+  notifications Boolean @default(true)
+  soundEnabled  Boolean @default(true)
+
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastActiveAt DateTime @default(now())
+
+  // Game data relationships
+  character      Character?
+  resources      Resources?
+  inventory      InventoryItem[]
+  cultivation    CultivationProgress?
+  combat         CombatStats?
+  sectMembership SectMember?
+  achievements   UserAchievement[]
+  statistics     GameStatistics?
+  gameEvents     GameEvent[]
+  combatLogs     CombatLog[]
+
+  @@index([username])
+  @@index([email])
+  @@index([lastActiveAt])
+  @@map("users")
+}
+
+// =============================================================================
+// CHARACTER AND CULTIVATION MODELS
+// =============================================================================
+
+model Character {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name             String           @db.VarChar(100)
+  realm            CultivationRealm @default(MORTAL)
+  level            Int              @default(1)
+  experience       BigInt           @default(0)
+  experienceToNext BigInt           @default(100)
+
+  // Core attributes
+  strength     Int @default(10)
+  agility      Int @default(10)
+  intelligence Int @default(10)
+  constitution Int @default(10)
+  perception   Int @default(10)
+  luck         Int @default(10)
+
+  // Spiritual root
+  spiritualElement ElementType    @default(FIRE)
+  spiritualPurity  Int            @default(50) // 1-100
+  spiritualGrade   SpiritualGrade @default(COMMON)
+
+  // Bloodline (optional)
+  bloodlineId        String?
+  bloodline          Bloodline? @relation(fields: [bloodlineId], references: [id])
+  bloodlineAwakening Int        @default(0) // 0-100
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  techniques CharacterTechnique[]
+  talents    CharacterTalent[]
+
+  @@index([userId])
+  @@index([realm])
+  @@index([level])
+  @@map("characters")
+}
+
+model CultivationProgress {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  currentTechniqueId String?
+  currentTechnique   CultivationTechnique? @relation(fields: [currentTechniqueId], references: [id])
+
+  qiAmount             BigInt @default(0)
+  qiCapacity           BigInt @default(100)
+  cultivationSpeed     Float  @default(1.0)
+  bottleneckProgress   Float  @default(0.0) // 0-100
+  breakthroughAttempts Int    @default(0)
+  stabilityPercentage  Float  @default(100.0)
+
+  // Session tracking
+  isSessionActive  Boolean   @default(false)
+  sessionStartTime DateTime?
+  sessionDuration  Int       @default(0) // seconds
+  sessionQiGained  BigInt    @default(0)
+  sessionExpGained BigInt    @default(0)
+
+  lastCalculatedAt DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isSessionActive])
+  @@index([lastCalculatedAt])
+  @@map("cultivation_progress")
+}
+
+// =============================================================================
+// TECHNIQUE AND TALENT SYSTEMS
+// =============================================================================
+
+model CultivationTechnique {
+  id          String        @id @default(cuid())
+  name        String        @unique @db.VarChar(100)
+  description String        @db.Text
+  type        TechniqueType @default(BASIC)
+  element     ElementType   @default(FIRE)
+
+  // Requirements
+  minRealm CultivationRealm @default(MORTAL)
+  minLevel Int              @default(1)
+
+  // Effects
+  baseSpeed      Float @default(1.0)
+  qiEfficiency   Float @default(1.0)
+  stabilityBonus Float @default(0.0)
+
+  // Metadata
+  rarity   ItemRarity @default(COMMON)
+  isActive Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  userProgress        CultivationProgress[]
+  characterTechniques CharacterTechnique[]
+
+  @@index([name])
+  @@index([type])
+  @@index([element])
+  @@index([minRealm])
+  @@map("cultivation_techniques")
+}
+
+model CharacterTechnique {
+  id          String               @id @default(cuid())
+  characterId String
+  character   Character            @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  techniqueId String
+  technique   CultivationTechnique @relation(fields: [techniqueId], references: [id])
+
+  proficiency  Float  @default(0.0) // 0-100
+  level        Int    @default(1)
+  experience   BigInt @default(0)
+  masteryBonus Float  @default(0.0)
+
+  learnedAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@unique([characterId, techniqueId])
+  @@index([characterId])
+  @@index([techniqueId])
+  @@map("character_techniques")
+}
+
+model Talent {
+  id          String     @id @default(cuid())
+  name        String     @unique @db.VarChar(100)
+  description String     @db.Text
+  type        TalentType @default(PASSIVE)
+
+  // Effects (stored as JSON for flexibility)
+  effects Json @default("[]")
+
+  // Requirements
+  requirements Json @default("[]")
+
+  // Metadata
+  rarity   ItemRarity @default(COMMON)
+  isActive Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  characterTalents CharacterTalent[]
+
+  @@index([name])
+  @@index([type])
+  @@index([rarity])
+  @@map("talents")
+}
+
+model CharacterTalent {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  talentId    String
+  talent      Talent    @relation(fields: [talentId], references: [id])
+
+  isUnlocked Boolean   @default(false)
+  unlockedAt DateTime?
+
+  @@unique([characterId, talentId])
+  @@index([characterId])
+  @@index([talentId])
+  @@index([isUnlocked])
+  @@map("character_talents")
+}
+
+model Bloodline {
+  id          String     @id @default(cuid())
+  name        String     @unique @db.VarChar(100)
+  description String     @db.Text
+  rarity      ItemRarity @default(COMMON)
+
+  // Abilities (stored as JSON)
+  abilities Json @default("[]")
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  characters Character[]
+
+  @@index([name])
+  @@index([rarity])
+  @@map("bloodlines")
+}
+
+// =============================================================================
+// RESOURCES AND INVENTORY SYSTEM
+// =============================================================================
+
+model Resources {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  spiritStones BigInt @default(0)
+  gold         BigInt @default(1000)
+
+  // Materials stored as JSON for flexibility
+  materials Json @default("{}")
+  pills     Json @default("{}")
+  herbs     Json @default("{}")
+
+  lastUpdated DateTime @default(now())
+
+  @@index([userId])
+  @@map("resources")
+}
+
+model Item {
+  id          String     @id @default(cuid())
+  name        String     @unique @db.VarChar(100)
+  description String     @db.Text
+  type        ItemType   @default(MATERIAL)
+  rarity      ItemRarity @default(COMMON)
+  value       Int        @default(1)
+
+  // Properties
+  stackable  Boolean @default(true)
+  tradeable  Boolean @default(true)
+  consumable Boolean @default(false)
+
+  // Effects and requirements (stored as JSON)
+  effects      Json @default("[]")
+  requirements Json @default("[]")
+
+  // Metadata
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  inventoryItems InventoryItem[]
+
+  @@index([name])
+  @@index([type])
+  @@index([rarity])
+  @@map("items")
+}
+
+model InventoryItem {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id])
+
+  quantity Int  @default(1)
+  metadata Json @default("{}")
+
+  acquiredAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@index([itemId])
+  @@map("inventory_items")
+}
+
+// =============================================================================
+// COMBAT SYSTEM
+// =============================================================================
+
+model CombatStats {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  level          Int   @default(1)
+  health         Int   @default(100)
+  maxHealth      Int   @default(100)
+  attack         Int   @default(10)
+  defense        Int   @default(10)
+  speed          Int   @default(10)
+  criticalChance Float @default(5.0)
+  criticalDamage Float @default(150.0)
+
+  combatExperience BigInt @default(0)
+  wins             Int    @default(0)
+  losses           Int    @default(0)
+  draws            Int    @default(0)
+
+  lastCombatAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([level])
+  @@map("combat_stats")
+}
+
+model CombatLog {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  opponentName     String       @db.VarChar(100)
+  result           CombatResult @default(DRAW)
+  duration         Int          @default(0) // seconds
+  damageDealt      Int          @default(0)
+  damageReceived   Int          @default(0)
+  experienceGained BigInt       @default(0)
+
+  // Loot and detailed log stored as JSON
+  lootGained    Json @default("[]")
+  combatDetails Json @default("[]")
+
+  foughtAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([result])
+  @@index([foughtAt])
+  @@map("combat_logs")
+}
+
+// =============================================================================
+// SECT SYSTEM
+// =============================================================================
+
+model Sect {
+  id          String @id @default(cuid())
+  name        String @unique @db.VarChar(100)
+  description String @db.Text
+  level       Int    @default(1)
+  experience  BigInt @default(0)
+  leaderId    String
+
+  // Resources
+  spiritStones BigInt @default(0)
+  reputation   Int    @default(0)
+  influence    Int    @default(0)
+  territory    Int    @default(1)
+
+  // Buildings (stored as JSON for flexibility)
+  buildings Json @default("[]")
+
+  // Relationships (stored as arrays)
+  alliances Json @default("[]")
+  enemies   Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  members SectMember[]
+
+  @@index([name])
+  @@index([leaderId])
+  @@index([level])
+  @@map("sects")
+}
+
+model SectMember {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sectId String
+  sect   Sect   @relation(fields: [sectId], references: [id], onDelete: Cascade)
+
+  role         SectRole @default(OUTER_DISCIPLE)
+  contribution BigInt   @default(0)
+  permissions  Json     @default("[]")
+
+  joinedAt     DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([sectId])
+  @@index([role])
+  @@map("sect_members")
+}
+
+// =============================================================================
+// ACHIEVEMENTS AND STATISTICS
+// =============================================================================
+
+model Achievement {
+  id          String              @id @default(cuid())
+  name        String              @unique @db.VarChar(100)
+  description String              @db.Text
+  category    AchievementCategory @default(CULTIVATION)
+  maxProgress Int                 @default(1)
+
+  // Rewards (stored as JSON)
+  rewards Json @default("[]")
+
+  // Metadata
+  isHidden Boolean @default(false)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  userAchievements UserAchievement[]
+
+  @@index([name])
+  @@index([category])
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  progress    Int       @default(0)
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+  @@index([isCompleted])
+  @@map("user_achievements")
+}
+
+model GameStatistics {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  totalPlayTime        BigInt @default(0) // seconds
+  cultivationTime      BigInt @default(0)
+  combatWins           Int    @default(0)
+  combatLosses         Int    @default(0)
+  itemsCrafted         Int    @default(0)
+  achievementsUnlocked Int    @default(0)
+  realmBreakthroughs   Int    @default(0)
+  sectContribution     BigInt @default(0)
+
+  // Resource tracking (stored as JSON)
+  resourcesEarned Json @default("{}")
+
+  lastUpdated DateTime @default(now())
+
+  @@index([userId])
+  @@map("game_statistics")
+}
+
+// =============================================================================
+// GAME EVENTS AND LOGGING
+// =============================================================================
+
+model GameEvent {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      GameEventType @default(CULTIVATION_BREAKTHROUGH)
+  data      Json          @default("{}")
+  processed Boolean       @default(false)
+
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([userId])
+  @@index([type])
+  @@index([processed])
+  @@index([createdAt])
+  @@map("game_events")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum CultivationRealm {
+  MORTAL
+  QI_REFINING
+  FOUNDATION_ESTABLISHMENT
+  CORE_FORMATION
+  NASCENT_SOUL
+  SOUL_TRANSFORMATION
+  VOID_REFINEMENT
+  BODY_INTEGRATION
+  MAHAYANA
+  TRANSCENDENCE
+}
+
+enum ElementType {
+  FIRE
+  WATER
+  EARTH
+  WOOD
+  METAL
+  LIGHTNING
+  ICE
+  DARKNESS
+  LIGHT
+}
+
+enum SpiritualGrade {
+  TRASH
+  COMMON
+  UNCOMMON
+  RARE
+  LEGENDARY
+  MYTHICAL
+}
+
+enum TechniqueType {
+  BASIC
+  ADVANCED
+  SUPREME
+  DIVINE
+}
+
+enum TalentType {
+  PASSIVE
+  ACTIVE
+  CONDITIONAL
+}
+
+enum ItemType {
+  PILL
+  HERB
+  WEAPON
+  ARMOR
+  ARTIFACT
+  MATERIAL
+  SCROLL
+  TREASURE
+}
+
+enum ItemRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHICAL
+  DIVINE
+}
+
+enum SectRole {
+  LEADER
+  ELDER
+  CORE_DISCIPLE
+  INNER_DISCIPLE
+  OUTER_DISCIPLE
+}
+
+enum AchievementCategory {
+  CULTIVATION
+  COMBAT
+  EXPLORATION
+  SOCIAL
+  COLLECTION
+  SPECIAL
+}
+
+enum CombatResult {
+  WIN
+  LOSS
+  DRAW
+}
+
+enum GameEventType {
+  CULTIVATION_BREAKTHROUGH
+  ITEM_ACQUIRED
+  COMBAT_COMPLETED
+  ACHIEVEMENT_UNLOCKED
+  SECT_JOINED
+  SECT_LEFT
+  TALENT_UNLOCKED
+  BLOODLINE_AWAKENED
+}

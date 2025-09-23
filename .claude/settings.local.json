@@ -29,7 +29,12 @@
       "Bash(dir)",
       "Bash(start /B python -m http.server 3000)",
       "Bash(start http://localhost:8080/test-full-loading.html)",
-      "Bash(start:*)"
+      "Bash(start:*)",
+      "Bash(gh issue comment:*)",
+      "WebFetch(domain:playwright.dev)",
+      "Bash(git branch:*)",
+      "Bash(git reset:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

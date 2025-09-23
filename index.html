@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/views.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/skills.css">
     <link rel="stylesheet" href="css/mobile.css">
 </head>
 <body>
@@ -104,6 +105,14 @@
                     <div class="resource">
                         <div class="resource-icon">⭐</div>
                         <div class="resource-value" id="shard-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">🧩</div>
+                        <div class="resource-value" id="skill-fragments-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">📜</div>
+                        <div class="resource-value" id="skill-points-count">0</div>
                     </div>
                 </div>
                 <div class="realm-info">
@@ -342,6 +351,13 @@
                     </div>
                 </div>
 
+                <!-- Skills Tab -->
+                <div id="skills-tab" class="tab-content">
+                    <div class="skills-interface" id="skills-interface">
+                        <!-- Skills content will be populated by SkillTreeComponent -->
+                    </div>
+                </div>
+
                 <!-- Sect Tab -->
                 <div id="sect-tab" class="tab-content">
                     <div class="sect-interface">
@@ -400,6 +416,7 @@
                 <button class="nav-btn active" data-tab="cultivation">Cultivate</button>
                 <button class="nav-btn" data-tab="loadout">Loadout</button>
                 <button class="nav-btn" data-tab="scriptures">Scriptures</button>
+                <button class="nav-btn" data-tab="skills">Skills</button>
                 <button class="nav-btn" data-tab="combat">Combat</button>
                 <button class="nav-btn" data-tab="sect">Sect</button>
             </nav>
@@ -428,6 +445,7 @@
     <script src="js/data/cultivation-data.js"></script>
     <script src="js/data/combat-data.js"></script>
     <script src="js/data/sect-data.js"></script>
+    <script src="js/data/skill-data.js"></script>
 
     <!-- Cultivation System Components -->
     <script src="js/systems/CultivationSystem.js"></script>
@@ -443,9 +461,18 @@
     <script src="js/systems/SectCompetition.js"></script>
     <script src="js/systems/SectIntegration.js"></script>
 
+    <!-- Skills System Components -->
+    <script src="js/managers/SkillManager.js"></script>
+    <script src="js/systems/SkillSystem.js"></script>
+    <script src="js/systems/SkillIntegration.js"></script>
+
     <!-- UI Framework -->
     <script src="js/ui/BaseComponent.js"></script>
     <script src="js/ui/UIManager.js"></script>
+
+    <!-- UI Components -->
+    <script src="js/ui/components/SkillTreeComponent.js"></script>
+    <script src="js/ui/components/SkillDetailModal.js"></script>
 
     <!-- View System -->
     <script src="js/views/GameView.js"></script>

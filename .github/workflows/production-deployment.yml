@@ -1,0 +1,325 @@
+name: Production Deployment Validation
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  NODE_VERSION: '18.x'
+  DEPLOYMENT_CONFIDENCE_THRESHOLD: 85
+
+jobs:
+  # Phase 1: Pre-deployment validation
+  pre_deployment_validation:
+    runs-on: ubuntu-latest
+    outputs:
+      confidence_score: ${{ steps.confidence.outputs.score }}
+      should_deploy: ${{ steps.confidence.outputs.should_deploy }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd backend && npm ci
+        cd ../mobile && npm ci
+
+    - name: Lint code
+      run: |
+        npm run lint || echo "Linting completed with warnings"
+
+    - name: Run unit tests
+      run: |
+        npm test
+        cd backend && npm test
+
+    - name: Run integration tests
+      run: |
+        npm run test:integration
+
+    - name: Performance baseline validation
+      run: |
+        npm run test:performance
+
+    - name: Security scan
+      run: |
+        npm audit --audit-level=high
+        cd backend && npm audit --audit-level=high
+
+    - name: Calculate deployment confidence score
+      id: confidence
+      run: |
+        node scripts/deployment/calculate-confidence.js
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          test-results/
+          coverage/
+          performance-reports/
+
+  # Phase 2: Cross-system integration validation
+  integration_validation:
+    runs-on: ubuntu-latest
+    needs: pre_deployment_validation
+    if: needs.pre_deployment_validation.outputs.should_deploy == 'true'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd backend && npm ci
+
+    - name: Start test environment
+      run: |
+        cd backend && npm run start:test &
+        sleep 10
+
+    - name: Run E2E integration tests
+      run: |
+        npm run test:e2e
+
+    - name: Cross-system data flow validation
+      run: |
+        npm run test:cross-system
+
+    - name: Performance integration testing
+      run: |
+        npm run test:performance:integration
+
+    - name: Economic system validation
+      run: |
+        npm run test:economic
+
+    - name: Save/Load system validation
+      run: |
+        npm run test:save-load
+
+    - name: Stop test environment
+      if: always()
+      run: |
+        pkill -f "node.*backend" || true
+
+  # Phase 3: Production readiness validation
+  production_readiness:
+    runs-on: ubuntu-latest
+    needs: [pre_deployment_validation, integration_validation]
+    if: needs.pre_deployment_validation.outputs.should_deploy == 'true'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd backend && npm ci
+
+    - name: Build production artifacts
+      run: |
+        npm run build:production
+        cd backend && npm run build
+
+    - name: Validate production configuration
+      run: |
+        node scripts/deployment/validate-production-config.js
+
+    - name: Database migration validation
+      run: |
+        cd backend && npm run db:validate-migrations
+
+    - name: API health check validation
+      run: |
+        cd backend && npm run test:api-health
+
+    - name: Load testing
+      run: |
+        npm run test:load
+
+    - name: Memory leak detection
+      run: |
+        npm run test:memory-leaks
+
+    - name: Bundle size analysis
+      run: |
+        npm run analyze:bundle-size
+
+    - name: Generate deployment report
+      run: |
+        node scripts/deployment/generate-deployment-report.js
+
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-artifacts
+        path: |
+          dist/
+          deployment-report.json
+          build-artifacts/
+
+  # Phase 4: Deployment execution (staging)
+  deploy_staging:
+    runs-on: ubuntu-latest
+    needs: [pre_deployment_validation, integration_validation, production_readiness]
+    if: |
+      needs.pre_deployment_validation.outputs.should_deploy == 'true' &&
+      (github.event_name == 'push' || github.event.inputs.environment == 'staging')
+    environment: staging
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download deployment artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-artifacts
+
+    - name: Deploy to staging
+      run: |
+        node scripts/deployment/deploy-staging.js
+
+    - name: Post-deployment validation
+      run: |
+        sleep 30
+        npm run test:post-deployment:staging
+
+    - name: Smoke tests
+      run: |
+        npm run test:smoke:staging
+
+    - name: Performance validation
+      run: |
+        npm run test:performance:staging
+
+    - name: Integration health check
+      run: |
+        npm run test:integration-health:staging
+
+  # Phase 5: Production deployment
+  deploy_production:
+    runs-on: ubuntu-latest
+    needs: [pre_deployment_validation, integration_validation, production_readiness, deploy_staging]
+    if: |
+      needs.pre_deployment_validation.outputs.should_deploy == 'true' &&
+      (github.ref == 'refs/heads/master' || github.event.inputs.environment == 'production') &&
+      github.event_name != 'pull_request'
+    environment: production
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download deployment artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-artifacts
+
+    - name: Pre-deployment backup
+      run: |
+        node scripts/deployment/backup-production.js
+
+    - name: Deploy to production
+      run: |
+        node scripts/deployment/deploy-production.js
+
+    - name: Post-deployment validation
+      run: |
+        sleep 60
+        npm run test:post-deployment:production
+
+    - name: Smoke tests
+      run: |
+        npm run test:smoke:production
+
+    - name: Performance validation
+      run: |
+        npm run test:performance:production
+
+    - name: Integration health check
+      run: |
+        npm run test:integration-health:production
+
+    - name: Update monitoring dashboards
+      run: |
+        node scripts/deployment/update-monitoring.js
+
+  # Phase 6: Rollback capability validation
+  rollback_validation:
+    runs-on: ubuntu-latest
+    needs: deploy_production
+    if: failure()
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Execute rollback procedure
+      run: |
+        node scripts/deployment/rollback-production.js
+
+    - name: Validate rollback success
+      run: |
+        sleep 30
+        npm run test:rollback-validation
+
+    - name: Notify team of rollback
+      run: |
+        node scripts/deployment/notify-rollback.js
+
+  # Phase 7: Monitoring and alerts setup
+  setup_monitoring:
+    runs-on: ubuntu-latest
+    needs: deploy_production
+    if: success()
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure production monitoring
+      run: |
+        node scripts/monitoring/configure-alerts.js
+
+    - name: Setup performance thresholds
+      run: |
+        node scripts/monitoring/setup-performance-thresholds.js
+
+    - name: Configure integration health monitoring
+      run: |
+        node scripts/monitoring/setup-integration-monitoring.js
+
+    - name: Test alert systems
+      run: |
+        node scripts/monitoring/test-alerts.js

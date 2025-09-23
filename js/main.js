@@ -431,21 +431,90 @@ class IdleCultivationGame {
             priority: 90
         });
 
-        // Skills Module - placeholder (not yet implemented)
+        // Skills Module - handles skill system mechanics
         this.moduleManager.registerModule('skills', {
             factory: async (context) => {
-                return {
-                    name: 'Skills Module (Placeholder)',
+                const module = {
+                    name: 'Skills Module',
+                    skillIntegration: null,
+                    skillTreeComponent: null,
+                    skillDetailModal: null,
                     init: async () => {
-                        console.log('Skills Module placeholder initialized');
-                        // Skills system not yet implemented
+                        console.log('Skills Module initializing...');
+
+                        // Get the skill integration instance
+                        module.skillIntegration = getSkillIntegration();
+
+                        // Initialize the skill system
+                        await module.skillIntegration.initialize(context.gameState, context.eventManager);
+
+                        // Initialize UI components
+                        await module._initializeSkillsUI(context);
+
+                        console.log('Skills Module initialized');
                     },
                     update: (deltaTime) => {
-                        // Placeholder - no skills system to update yet
+                        // Skills system updates itself via integration
+                        if (module.skillIntegration) {
+                            module.skillIntegration.update(deltaTime);
+                        }
+
+                        // Update UI components
+                        if (module.skillTreeComponent) {
+                            module.skillTreeComponent.update(deltaTime);
+                        }
+                    },
+                    shutdown: () => {
+                        if (module.skillTreeComponent) {
+                            module.skillTreeComponent.shutdown();
+                        }
+                        if (module.skillDetailModal) {
+                            module.skillDetailModal.shutdown();
+                        }
+                        if (module.skillIntegration) {
+                            module.skillIntegration.shutdown();
+                        }
+                    },
+                    async _initializeSkillsUI(context) {
+                        try {
+                            // Initialize skill tree component
+                            const skillsInterface = document.getElementById('skills-interface');
+                            if (skillsInterface) {
+                                module.skillTreeComponent = new SkillTreeComponent(
+                                    skillsInterface,
+                                    context.eventManager,
+                                    module.skillIntegration.getSkillSystem()
+                                );
+                                await module.skillTreeComponent.initialize();
+                            }
+
+                            // Initialize skill detail modal
+                            const modalContainer = document.createElement('div');
+                            modalContainer.id = 'skill-detail-modal-container';
+                            document.body.appendChild(modalContainer);
+
+                            module.skillDetailModal = new SkillDetailModal(
+                                modalContainer,
+                                context.eventManager,
+                                module.skillIntegration.getSkillSystem()
+                            );
+                            await module.skillDetailModal.initialize();
+
+                            // Set up cross-component communication
+                            context.eventManager.on('skillTree:skillSelected', (data) => {
+                                module.skillDetailModal.show(data.skillId);
+                            });
+
+                            console.log('Skills UI components initialized');
+
+                        } catch (error) {
+                            console.error('Skills Module: UI initialization failed:', error);
+                        }
                     }
                 };
+                return module;
             },
-            dependencies: [],
+            dependencies: ['cultivation'],
             priority: 85
         });
 
@@ -588,10 +657,9 @@ class IdleCultivationGame {
         if (cultivationModule) {
             this.gameLoop.registerGameSystem(cultivationModule);
         }
-        // skillsModule - placeholder, don't register yet
-        // if (skillsModule) {
-        //     this.gameLoop.registerGameSystem(skillsModule);
-        // }
+        if (skillsModule) {
+            this.gameLoop.registerGameSystem(skillsModule);
+        }
         if (combatModule) {
             this.gameLoop.registerGameSystem(combatModule);
         }

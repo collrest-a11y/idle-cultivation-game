@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skills System Test - Idle Cultivation</title>
+    <link rel="stylesheet" href="css/skills.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .test-status {
+            background: #2a2a2a;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #0066aa;
+        }
+
+        .btn.secondary {
+            background: #3a3a3a;
+        }
+
+        .btn.secondary:hover {
+            background: #4a4a4a;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <header class="test-header">
+            <h1>Skills System Test</h1>
+            <p>Testing the Roguelite Skills System Implementation</p>
+        </header>
+
+        <div class="test-controls">
+            <button class="btn" id="init-system">Initialize Skills System</button>
+            <button class="btn secondary" id="add-fragments">Add 100 Fragments</button>
+            <button class="btn secondary" id="add-skill-points">Add 50 Skill Points</button>
+            <button class="btn secondary" id="unlock-basic-skills">Unlock Basic Skills</button>
+            <button class="btn secondary" id="test-synergies">Test Synergies</button>
+            <button class="btn secondary" id="reset-skills">Reset Skills</button>
+        </div>
+
+        <div class="test-status" id="test-status">
+            <h3>System Status</h3>
+            <div id="status-content">
+                <p>Skills system not initialized</p>
+            </div>
+        </div>
+
+        <div id="skills-container" style="height: 600px; background: #2a2a2a; border-radius: 8px; padding: 16px;">
+            <p style="text-align: center; margin-top: 200px; color: #999;">
+                Initialize the skills system to begin testing
+            </p>
+        </div>
+    </div>
+
+    <!-- Include all necessary scripts -->
+    <!-- Core Game Engine -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+
+    <!-- Game Data -->
+    <script src="js/data/skill-data.js"></script>
+
+    <!-- Skills System -->
+    <script src="js/managers/SkillManager.js"></script>
+    <script src="js/systems/SkillSystem.js"></script>
+    <script src="js/systems/SkillIntegration.js"></script>
+
+    <!-- UI Framework -->
+    <script src="js/ui/BaseComponent.js"></script>
+    <script src="js/ui/components/SkillTreeComponent.js"></script>
+    <script src="js/ui/components/SkillDetailModal.js"></script>
+
+    <script>
+        // Test application
+        class SkillsSystemTest {
+            constructor() {
+                this.eventManager = null;
+                this.gameState = null;
+                this.skillIntegration = null;
+                this.skillTreeComponent = null;
+                this.skillDetailModal = null;
+
+                this.isInitialized = false;
+
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('init-system').addEventListener('click', () => {
+                    this.initializeSystem();
+                });
+
+                document.getElementById('add-fragments').addEventListener('click', () => {
+                    this.addFragments(100);
+                });
+
+                document.getElementById('add-skill-points').addEventListener('click', () => {
+                    this.addSkillPoints(50);
+                });
+
+                document.getElementById('unlock-basic-skills').addEventListener('click', () => {
+                    this.unlockBasicSkills();
+                });
+
+                document.getElementById('test-synergies').addEventListener('click', () => {
+                    this.testSynergies();
+                });
+
+                document.getElementById('reset-skills').addEventListener('click', () => {
+                    this.resetSkills();
+                });
+            }
+
+            async initializeSystem() {
+                try {
+                    this.updateStatus('Initializing skills system...');
+
+                    // Initialize core systems
+                    this.eventManager = new EventManager();
+                    this.gameState = new GameState();
+                    this.gameState.setEventManager(this.eventManager);
+
+                    // Initialize skills system
+                    this.skillIntegration = new SkillIntegration();
+                    await this.skillIntegration.initialize(this.gameState, this.eventManager);
+
+                    // Initialize UI components
+                    await this.initializeUI();
+
+                    this.isInitialized = true;
+                    this.updateStatus('Skills system initialized successfully!');
+
+                    console.log('Skills system test initialization complete');
+
+                } catch (error) {
+                    console.error('Initialization failed:', error);
+                    this.updateStatus(`Initialization failed: ${error.message}`);
+                }
+            }
+
+            async initializeUI() {
+                const container = document.getElementById('skills-container');
+                container.innerHTML = '';
+
+                // Initialize skill tree
+                this.skillTreeComponent = new SkillTreeComponent(
+                    container,
+                    this.eventManager,
+                    this.skillIntegration.getSkillSystem()
+                );
+                await this.skillTreeComponent.initialize();
+
+                // Initialize modal
+                const modalContainer = document.createElement('div');
+                modalContainer.id = 'modal-container';
+                document.body.appendChild(modalContainer);
+
+                this.skillDetailModal = new SkillDetailModal(
+                    modalContainer,
+                    this.eventManager,
+                    this.skillIntegration.getSkillSystem()
+                );
+                await this.skillDetailModal.initialize();
+
+                // Connect components
+                this.eventManager.on('skillTree:skillSelected', (data) => {
+                    this.skillDetailModal.show(data.skillId);
+                });
+            }
+
+            addFragments(amount) {
+                if (!this.isInitialized) {
+                    this.updateStatus('System not initialized');
+                    return;
+                }
+
+                const skillsState = this.gameState.get('skills') || {};
+                skillsState.fragments = (skillsState.fragments || 0) + amount;
+                this.gameState.set('skills', skillsState);
+
+                this.updateStatus(`Added ${amount} fragments. Total: ${skillsState.fragments}`);
+                this.refreshUI();
+            }
+
+            addSkillPoints(amount) {
+                if (!this.isInitialized) {
+                    this.updateStatus('System not initialized');
+                    return;
+                }
+
+                const skillsState = this.gameState.get('skills') || {};
+                skillsState.skillPoints = (skillsState.skillPoints || 0) + amount;
+                this.gameState.set('skills', skillsState);
+
+                this.updateStatus(`Added ${amount} skill points. Total: ${skillsState.skillPoints}`);
+                this.refreshUI();
+            }
+
+            async unlockBasicSkills() {
+                if (!this.isInitialized) {
+                    this.updateStatus('System not initialized');
+                    return;
+                }
+
+                try {
+                    const skillSystem = this.skillIntegration.getSkillSystem();
+
+                    // Unlock basic skills
+                    const basicSkills = ['qi_flow_enhancement', 'basic_strike'];
+                    let unlocked = 0;
+
+                    for (const skillId of basicSkills) {
+                        const result = await skillSystem.unlockSkill(skillId, { fragmentsCost: 0 });
+                        if (result.success) {
+                            unlocked++;
+                        }
+                    }
+
+                    this.updateStatus(`Unlocked ${unlocked} basic skills`);
+                    this.refreshUI();
+
+                } catch (error) {
+                    this.updateStatus(`Unlock failed: ${error.message}`);
+                }
+            }
+
+            async testSynergies() {
+                if (!this.isInitialized) {
+                    this.updateStatus('System not initialized');
+                    return;
+                }
+
+                try {
+                    const skillSystem = this.skillIntegration.getSkillSystem();
+
+                    // Add skills to loadout to test synergies
+                    const result = skillSystem.updateLoadout(['qi_flow_enhancement', 'basic_strike']);
+
+                    if (result.success) {
+                        this.updateStatus('Updated loadout to test synergies');
+                        this.refreshUI();
+                    } else {
+                        this.updateStatus(`Loadout update failed: ${result.error}`);
+                    }
+
+                } catch (error) {
+                    this.updateStatus(`Synergy test failed: ${error.message}`);
+                }
+            }
+
+            resetSkills() {
+                if (!this.isInitialized) {
+                    this.updateStatus('System not initialized');
+                    return;
+                }
+
+                // Reset skills state
+                this.gameState.set('skills', {
+                    unlocked: {},
+                    levels: {},
+                    loadout: [],
+                    skillPoints: 0,
+                    fragments: 0,
+                    mastery: {}
+                });
+
+                this.updateStatus('Skills system reset');
+                this.refreshUI();
+            }
+
+            refreshUI() {
+                if (this.skillTreeComponent) {
+                    this.skillTreeComponent.refreshData();
+                }
+            }
+
+            updateStatus(message) {
+                const statusContent = document.getElementById('status-content');
+                const timestamp = new Date().toLocaleTimeString();
+                statusContent.innerHTML = `
+                    <p><strong>[${timestamp}]</strong> ${message}</p>
+                    ${statusContent.innerHTML}
+                `;
+            }
+        }
+
+        // Initialize test when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.skillsTest = new SkillsSystemTest();
+            console.log('Skills system test page loaded');
+        });
+    </script>
+</body>
+</html>
