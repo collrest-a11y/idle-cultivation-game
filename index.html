@@ -10,8 +10,319 @@
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/skills.css">
     <link rel="stylesheet" href="css/mobile.css">
+
+    <!-- Inline Loading & Error Styles - Load immediately, no external dependencies -->
+    <style>
+        /* Loading Screen Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-container {
+            text-align: center;
+            max-width: 400px;
+            padding: 2rem;
+        }
+
+        .loading-logo {
+            margin-bottom: 2rem;
+        }
+
+        .cultivation-symbol {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .loading-logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .loading-logo .subtitle {
+            font-size: 1rem;
+            color: #b8c5d6;
+            font-style: italic;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 2rem auto;
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite;
+        }
+
+        .spinner-ring:nth-child(2) {
+            width: 70%;
+            height: 70%;
+            top: 15%;
+            left: 15%;
+            border-top-color: #4fc3f7;
+            animation-duration: 1.2s;
+            animation-direction: reverse;
+        }
+
+        .spinner-ring:nth-child(3) {
+            width: 40%;
+            height: 40%;
+            top: 30%;
+            left: 30%;
+            border-top-color: #667eea;
+            animation-duration: 0.9s;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.95); }
+        }
+
+        /* Loading Text & Progress */
+        .loading-text {
+            margin-top: 1.5rem;
+        }
+
+        .loading-text p {
+            color: #b8c5d6;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .loading-progress {
+            width: 100%;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #4fc3f7);
+            border-radius: 3px;
+            animation: progress 2s ease-in-out infinite;
+        }
+
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        /* Error Display Styles */
+        .error-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 14, 26, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            opacity: 1;
+            transition: opacity 0.3s ease-out;
+        }
+
+        .error-display.hidden {
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .error-container {
+            background: linear-gradient(135deg, #1a1f2e, #252d42);
+            border: 2px solid #ff4757;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(255, 71, 87, 0.3);
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .error-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: #ff4757;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            color: #b8c5d6;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .error-details {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .error-technical {
+            color: #6c7b7f;
+            font-family: monospace;
+            font-size: 0.875rem;
+            word-break: break-word;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .error-retry,
+        .error-details-toggle {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .error-retry {
+            background: linear-gradient(135deg, #00d4ff, #4fc3f7);
+            color: #0a0e1a;
+        }
+
+        .error-retry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
+        }
+
+        .error-details-toggle {
+            background: transparent;
+            border: 2px solid #4a90e2;
+            color: #4a90e2;
+        }
+
+        .error-details-toggle:hover {
+            background: rgba(74, 144, 226, 0.1);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .loading-logo h1 {
+                font-size: 1.5rem;
+            }
+
+            .cultivation-symbol {
+                font-size: 3rem;
+            }
+
+            .error-container {
+                padding: 1.5rem;
+            }
+
+            .error-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
 </head>
 <body>
+    <!-- Loading Screen - Shows immediately, works without JavaScript -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-container">
+            <div class="loading-logo">
+                <div class="cultivation-symbol">☯</div>
+                <h1>Idle Cultivation</h1>
+                <p class="subtitle">Ashes on the Wind</p>
+            </div>
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+            </div>
+            <div class="loading-text">
+                <p>Gathering spiritual essence...</p>
+                <div class="loading-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Display - Hidden by default, shows user-friendly errors -->
+    <div id="error-display" class="error-display hidden">
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h2 class="error-title">Cultivation Disrupted</h2>
+            <p class="error-message">An unexpected spiritual disturbance has occurred.</p>
+            <div class="error-details hidden">
+                <p class="error-technical">Technical details will appear here</p>
+            </div>
+            <div class="error-actions">
+                <button class="error-retry btn-primary">Retry Cultivation</button>
+                <button class="error-details-toggle btn-secondary">Show Details</button>
+            </div>
+        </div>
+    </div>
+
     <div id="app">
         <!-- Character Creation Modal -->
         <div id="character-creation" class="modal">
@@ -654,5 +965,143 @@
 
     <!-- Main Game Entry Point -->
     <script src="js/main.js"></script>
+
+    <!-- Loading & Error Control Script - Runs immediately, no dependencies -->
+    <script>
+        // Loading Screen Controller
+        window.LoadingManager = {
+            loadingScreen: null,
+            errorDisplay: null,
+
+            init() {
+                this.loadingScreen = document.getElementById('loading-screen');
+                this.errorDisplay = document.getElementById('error-display');
+
+                // Set up error display controls
+                const retryBtn = document.querySelector('.error-retry');
+                const toggleBtn = document.querySelector('.error-details-toggle');
+                const detailsDiv = document.querySelector('.error-details');
+
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', () => {
+                        window.location.reload();
+                    });
+                }
+
+                if (toggleBtn && detailsDiv) {
+                    toggleBtn.addEventListener('click', () => {
+                        detailsDiv.classList.toggle('hidden');
+                        toggleBtn.textContent = detailsDiv.classList.contains('hidden')
+                            ? 'Show Details'
+                            : 'Hide Details';
+                    });
+                }
+            },
+
+            // Hide loading screen - call when game is ready
+            hide() {
+                if (this.loadingScreen) {
+                    this.loadingScreen.classList.add('hidden');
+                    // Remove from DOM after animation completes
+                    setTimeout(() => {
+                        if (this.loadingScreen && this.loadingScreen.parentNode) {
+                            this.loadingScreen.parentNode.removeChild(this.loadingScreen);
+                        }
+                    }, 500);
+                }
+            },
+
+            // Show loading screen - useful for reinitialization
+            show() {
+                if (this.loadingScreen) {
+                    this.loadingScreen.classList.remove('hidden');
+                }
+            },
+
+            // Update loading message
+            updateMessage(message) {
+                const loadingText = document.querySelector('.loading-text p');
+                if (loadingText) {
+                    loadingText.textContent = message;
+                }
+            },
+
+            // Show error with custom message
+            showError(userMessage, technicalDetails = null) {
+                // Hide loading screen first
+                this.hide();
+
+                if (this.errorDisplay) {
+                    // Update error message
+                    const messageEl = this.errorDisplay.querySelector('.error-message');
+                    if (messageEl) {
+                        messageEl.textContent = userMessage;
+                    }
+
+                    // Update technical details if provided
+                    if (technicalDetails) {
+                        const detailsEl = this.errorDisplay.querySelector('.error-technical');
+                        if (detailsEl) {
+                            detailsEl.textContent = technicalDetails;
+                        }
+                    }
+
+                    // Show error display
+                    this.errorDisplay.classList.remove('hidden');
+                }
+            },
+
+            // Hide error display
+            hideError() {
+                if (this.errorDisplay) {
+                    this.errorDisplay.classList.add('hidden');
+                }
+            }
+        };
+
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.LoadingManager.init();
+            });
+        } else {
+            window.LoadingManager.init();
+        }
+
+        // Global error handler - catches unhandled errors
+        window.addEventListener('error', (event) => {
+            console.error('Global error caught:', event.error);
+
+            // Show user-friendly error
+            const userMessage = 'The game encountered an unexpected error during initialization. Please refresh the page to try again.';
+            const technicalDetails = event.error ?
+                `${event.error.message}\n${event.error.stack || ''}` :
+                event.message;
+
+            window.LoadingManager.showError(userMessage, technicalDetails);
+        });
+
+        // Catch promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+
+            const userMessage = 'The game failed to load properly. Please check your internet connection and refresh the page.';
+            const technicalDetails = event.reason ?
+                (event.reason.stack || event.reason.toString()) :
+                'Unknown promise rejection';
+
+            window.LoadingManager.showError(userMessage, technicalDetails);
+        });
+
+        // Auto-hide loading screen after 10 seconds as fallback
+        // This ensures users aren't stuck on loading screen forever
+        setTimeout(() => {
+            if (window.LoadingManager && window.LoadingManager.loadingScreen &&
+                !window.LoadingManager.loadingScreen.classList.contains('hidden')) {
+                console.warn('Loading screen timeout - hiding automatically');
+                window.LoadingManager.hide();
+            }
+        }, 10000);
+    </script>
 </body>
 </html>

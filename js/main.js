@@ -67,6 +67,11 @@ class IdleCultivationGame {
 
             console.log('✅ Game initialized successfully');
 
+            // Hide loading screen
+            if (window.LoadingManager) {
+                window.LoadingManager.hide();
+            }
+
             // Emit initialization complete event
             this.eventManager.emit('game:initialized', {
                 timestamp: Date.now(),
@@ -76,6 +81,14 @@ class IdleCultivationGame {
         } catch (error) {
             console.error('❌ Failed to initialize game:', error);
             this.handleError(error);
+
+            // Show error in loading screen
+            if (window.LoadingManager) {
+                const userMessage = 'Failed to initialize the game. Please refresh the page to try again.';
+                const technicalDetails = `${error.message}\n${error.stack || ''}`;
+                window.LoadingManager.showError(userMessage, technicalDetails);
+            }
+
             throw error;
         }
     }
@@ -762,18 +775,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         console.error('Failed to start game:', error);
 
-        // Show error message to user
-        document.body.innerHTML = `
-            <div style="text-align: center; padding: 50px; font-family: Arial;">
-                <h1>⚠️ Game Failed to Load</h1>
-                <p>Sorry, there was an error starting the game.</p>
-                <p>Please refresh the page to try again.</p>
-                <details>
-                    <summary>Error Details</summary>
-                    <pre>${error.message}</pre>
-                </details>
-            </div>
-        `;
+        // Use LoadingManager to show error if available
+        if (window.LoadingManager) {
+            const userMessage = 'The game failed to start. Please refresh the page to try again.';
+            const technicalDetails = `${error.message}\n${error.stack || ''}`;
+            window.LoadingManager.showError(userMessage, technicalDetails);
+        } else {
+            // Fallback error display if LoadingManager isn't available
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; font-family: Arial;">
+                    <h1>⚠️ Game Failed to Load</h1>
+                    <p>Sorry, there was an error starting the game.</p>
+                    <p>Please refresh the page to try again.</p>
+                    <details>
+                        <summary>Error Details</summary>
+                        <pre>${error.message}</pre>
+                    </details>
+                </div>
+            `;
+        }
     }
 });
 
