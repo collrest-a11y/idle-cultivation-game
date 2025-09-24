@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Creation Test</title>
+    <link rel="stylesheet" href="styles-gfl.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .test-container {
+            max-width: 800px;
+            width: 100%;
+            padding: 20px;
+        }
+        #test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            color: #00d4ff;
+            font-family: monospace;
+        }
+        .modal {
+            display: block;
+            position: relative;
+            background: transparent;
+        }
+        .modal-content {
+            background: var(--secondary-bg);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 style="color: #00d4ff; text-align: center; margin-bottom: 30px;">Character Creation Test</h1>
+
+        <!-- Character Creation Modal -->
+        <div id="character-creation" class="modal">
+            <div class="modal-content">
+                <h2>Memory Fragments</h2>
+                <p class="prologue-text">The lantern flickers with your memories. Choose what shaped you...</p>
+
+                <div class="fragment-section">
+                    <h3>Origin</h3>
+                    <div class="fragment-choices" data-category="origin">
+                        <button class="fragment-choice" data-choice="dust-road">
+                            <h4>Dust Road Orphan</h4>
+                            <p>You learned to fight hungry</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="ink-pavilion">
+                            <h4>Ink Pavilion Disciple</h4>
+                            <p>Study made your will a blade</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="exiled-heir">
+                            <h4>Exiled Heir</h4>
+                            <p>You lost everything except your name</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="hermit">
+                            <h4>Hermit of the North Ridge</h4>
+                            <p>Storms taught you to listen first</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fragment-section">
+                    <h3>Vow</h3>
+                    <div class="fragment-choices" data-category="vow">
+                        <button class="fragment-choice" data-choice="protect">
+                            <h4>Protect the Small</h4>
+                            <p>Guard breaks don't shake you</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="pursue">
+                            <h4>Pursue the Hidden Law</h4>
+                            <p>Truth has a sound</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="break">
+                            <h4>Break the Chain</h4>
+                            <p>Shackles are just metal</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="settle">
+                            <h4>Settle a Debt</h4>
+                            <p>You keep receipts</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fragment-section">
+                    <h3>Mark of Fate</h3>
+                    <div class="fragment-choices" data-category="mark">
+                        <button class="fragment-choice" data-choice="thunder">
+                            <h4>Thunder Whisper (Qi)</h4>
+                            <p>First strike bites</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="frost">
+                            <h4>Frostbrand Scar (Body)</h4>
+                            <p>Cold makes clean cuts</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="twin">
+                            <h4>Twin-Pulse Sigil (Dual)</h4>
+                            <p>Two rhythms, one body</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="hollow">
+                            <h4>Hollow Gourd (Utility)</h4>
+                            <p>You carry what others spill</p>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="begin-cultivation" class="btn-primary" disabled>Begin Cultivation</button>
+            </div>
+        </div>
+
+        <!-- Test Results -->
+        <div id="test-results">
+            <strong>Test Status:</strong> Waiting for character selection...<br>
+            <strong>State:</strong> <span id="state-display">{}</span><br>
+            <strong>Begin Button:</strong> <span id="button-status">Disabled</span>
+        </div>
+
+        <!-- Hidden game interface for testing transition -->
+        <div id="game-interface" class="hidden" style="margin-top: 20px;">
+            <div style="background: var(--secondary-bg); padding: 30px; border-radius: 12px; text-align: center;">
+                <h2 style="color: #00d4ff;">Game Interface</h2>
+                <p style="color: var(--text-secondary);">Character creation completed successfully!</p>
+                <p style="color: var(--text-primary); font-family: monospace;" id="character-data"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Creation Fallback System -->
+    <script src="js/character-creation-fallback.js"></script>
+
+    <!-- Test monitoring script -->
+    <script>
+        setInterval(() => {
+            if (window.CharacterCreationFallback) {
+                const state = window.CharacterCreationFallback.getState();
+                document.getElementById('state-display').textContent = JSON.stringify(state);
+
+                const beginBtn = document.getElementById('begin-cultivation');
+                document.getElementById('button-status').textContent = beginBtn.disabled ? 'Disabled' : 'Enabled';
+
+                // Check localStorage for saved data
+                const saved = localStorage.getItem('characterChoices');
+                if (saved) {
+                    document.getElementById('character-data').textContent =
+                        'Saved Character: ' + saved;
+                }
+            }
+        }, 100);
+
+        // Monitor game interface visibility
+        const observer = new MutationObserver(() => {
+            const gameInterface = document.getElementById('game-interface');
+            if (gameInterface && !gameInterface.classList.contains('hidden')) {
+                const charCreation = document.getElementById('character-creation');
+                if (charCreation) {
+                    charCreation.style.display = 'none';
+                }
+            }
+        });
+
+        observer.observe(document.getElementById('game-interface'), {
+            attributes: true,
+            attributeFilter: ['class', 'style']
+        });
+    </script>
+</body>
+</html>
