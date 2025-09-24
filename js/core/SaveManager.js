@@ -67,6 +67,7 @@ class SaveManager {
         const config = {
             validate: true,
             migrate: true,
+            repair: true,
             ...options
         };
 
@@ -84,6 +85,37 @@ class SaveManager {
                 if (!isValid) {
                     console.warn('SaveManager: Checksum validation failed for', key);
                     return await this._attemptRecovery(key);
+                }
+            }
+
+            // Validate data integrity using DataValidator
+            if (config.validate && typeof window !== 'undefined' && window.dataValidator) {
+                const validation = window.dataValidator.validateGameState(saveData.data, { sanitize: false });
+
+                if (!validation.isValid) {
+                    console.warn('SaveManager: Data validation failed:', validation.errors);
+
+                    // Check corruption level
+                    const corruptionCheck = window.dataValidator.checkCorruption(saveData.data);
+
+                    if (corruptionCheck.isCorrupted) {
+                        console.warn('SaveManager: Corruption detected:', corruptionCheck);
+
+                        // Attempt repair if enabled and corruption is recoverable
+                        if (config.repair && corruptionCheck.isRecoverable) {
+                            const repair = window.dataValidator.repairData(saveData.data);
+                            if (repair.success) {
+                                console.log('SaveManager: Data repaired successfully:', repair.repairs);
+                                saveData.data = repair.data;
+                            } else {
+                                console.error('SaveManager: Data repair failed, attempting recovery');
+                                return await this._attemptRecovery(key);
+                            }
+                        } else {
+                            // Corruption is severe, attempt recovery
+                            return await this._attemptRecovery(key);
+                        }
+                    }
                 }
             }
 
@@ -451,9 +483,22 @@ class SaveManager {
 
         this.stats.lastSaveTime = Date.now();
 
-        // Create backup if requested
-        if (config.backup && await this._keyExists(key)) {
-            await this._createBackup(key);
+        // Validate data before saving if validator is available
+        if (config.validate && typeof window !== 'undefined' && window.dataValidator) {
+            const validation = window.dataValidator.validateGameState(data, { sanitize: false });
+            if (!validation.isValid) {
+                console.error('SaveManager: Cannot save invalid data:', validation.errors);
+                throw new Error('Save validation failed: ' + validation.errors.join(', '));
+            }
+        }
+
+        // Create backup if requested or if this is a risky operation
+        if ((config.backup || config.risky) && await this._keyExists(key)) {
+            const backupSuccess = await this._createBackup(key);
+            if (!backupSuccess && config.risky) {
+                console.error('SaveManager: Cannot perform risky operation without backup');
+                throw new Error('Backup creation failed before risky operation');
+            }
         }
 
         // Prepare save data

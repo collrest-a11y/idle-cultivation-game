@@ -423,9 +423,13 @@
         </div>
     </div>
 
+    <!-- Loading Progress Container -->
+    <div id="loading-container"></div>
+
     <!-- Core Game Engine -->
     <script src="js/core/EventManager.js"></script>
     <script src="js/core/ErrorManager.js"></script>
+    <script src="js/core/SafeMode.js"></script>
     <script src="js/core/GameState.js"></script>
     <script src="js/core/TimeManager.js"></script>
     <script src="js/core/PerformanceMonitor.js"></script>
@@ -434,11 +438,13 @@
     <script src="js/core/MobileManager.js"></script>
     <script src="js/core/GameLoop.js"></script>
     <script src="js/core/ModuleManager.js"></script>
+    <script src="js/core/ProgressiveLoader.js"></script>
 
     <!-- Additional Core Systems -->
     <script src="js/core/SaveManager.js"></script>
     <script src="js/core/DataValidator.js"></script>
     <script src="js/core/MigrationManager.js"></script>
+    <script src="js/core/StateRecoveryManager.js"></script>
     <script src="js/utils/Compression.js"></script>
 
     <!-- Game Data -->
@@ -469,6 +475,9 @@
     <!-- UI Framework -->
     <script src="js/ui/BaseComponent.js"></script>
     <script src="js/ui/UIManager.js"></script>
+    <script src="js/ui/LoadingProgress.js"></script>
+    <script src="js/ui/SafeModeUI.js"></script>
+    <script src="js/ui/components/RecoveryModal.js"></script>
 
     <!-- UI Components -->
     <script src="js/ui/components/SkillTreeComponent.js"></script>

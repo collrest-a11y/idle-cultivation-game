@@ -14,6 +14,8 @@ class IdleCultivationGame {
         this.timeManager = null;
         this.gameLoop = null;
         this.moduleManager = null;
+        this.progressiveLoader = null;
+        this.loadingProgress = null;
 
         // Game configuration
         this.config = {
@@ -56,7 +58,15 @@ class IdleCultivationGame {
             // Set up lifecycle handlers
             this._setupLifecycleHandlers();
 
-            // Register and load game modules
+            // Initialize progressive loader and UI
+            this._initializeProgressiveLoading();
+
+            // Show loading UI
+            if (this.loadingProgress) {
+                this.loadingProgress.show();
+            }
+
+            // Register and load game modules with progressive loading
             await this._loadGameModules();
 
             // Start the game
@@ -64,6 +74,11 @@ class IdleCultivationGame {
 
             this.isInitialized = true;
             this.isRunning = true;
+
+            // Initialization successful - reset failure count
+            if (window.safeMode) {
+                window.safeMode.resetFailures();
+            }
 
             console.log('✅ Game initialized successfully');
 
@@ -76,6 +91,19 @@ class IdleCultivationGame {
         } catch (error) {
             console.error('❌ Failed to initialize game:', error);
             this.handleError(error);
+
+            // Record failure and check if we should activate safe mode
+            if (window.safeMode) {
+                const shouldActivateSafeMode = window.safeMode.recordFailure(error, 'game_initialization');
+
+                if (shouldActivateSafeMode) {
+                    // Activate safe mode instead of throwing
+                    console.warn('🛡️ Activating Safe Mode due to repeated failures...');
+                    await this._activateSafeMode();
+                    return; // Don't throw - safe mode is now active
+                }
+            }
+
             throw error;
         }
     }
@@ -331,23 +359,148 @@ class IdleCultivationGame {
         console.log('✅ Core systems initialized');
     }
 
+    _initializeProgressiveLoading() {
+        console.log('🔄 Initializing progressive loading...');
+
+        // Initialize ProgressiveLoader
+        if (typeof ProgressiveLoader !== 'undefined') {
+            this.progressiveLoader = new ProgressiveLoader();
+            this.progressiveLoader.initialize({
+                moduleManager: this.moduleManager,
+                eventManager: this.eventManager
+            });
+            console.log('✅ ProgressiveLoader initialized');
+        } else {
+            console.warn('ProgressiveLoader not available, using standard loading');
+            // Fallback: create a wrapper that uses standard loading
+            this.progressiveLoader = {
+                loadAllPhases: async () => await this.moduleManager.loadAllModules()
+            };
+        }
+
+        // Initialize LoadingProgress UI
+        if (typeof LoadingProgress !== 'undefined') {
+            const loadingContainer = document.getElementById('loading-container') || document.body;
+            this.loadingProgress = new LoadingProgress(loadingContainer);
+            this.loadingProgress.initialize({
+                progressiveLoader: this.progressiveLoader,
+                eventManager: this.eventManager
+            });
+            console.log('✅ LoadingProgress UI initialized');
+        } else {
+            console.warn('LoadingProgress not available, loading UI disabled');
+        }
+    }
+
     async _loadGameModules() {
         console.log('📦 Loading game modules...');
 
-        // Register core game modules
-        this._registerGameModules();
+        try {
+            // Validate core systems before module registration
+            this._validateCoreSystemsReady();
 
-        // Load all modules
-        const loadResults = await this.moduleManager.loadAllModules();
+            // Register core game modules
+            this._registerGameModules();
 
-        if (loadResults.success) {
-            console.log(`✅ Loaded ${loadResults.loadedCount} modules successfully`);
-        } else {
-            console.warn(`⚠️ Module loading completed with ${loadResults.failedCount} failures`);
+            // Validate module registration
+            this._validateModuleRegistration();
+
+            // Load all modules with progressive loading
+            const loadResults = await this.progressiveLoader.loadAllPhases();
+
+            if (loadResults.success) {
+                console.log(`✅ Loaded ${loadResults.loadedCount} modules successfully in ${loadResults.totalTime.toFixed(2)}ms`);
+            } else {
+                console.warn(`⚠️ Module loading completed with ${loadResults.failedCount} failures`);
+            }
+
+            if (loadResults.failedModules.length > 0) {
+                console.error('Failed modules:', loadResults.failedModules);
+
+                // Report critical module failures
+                const criticalModules = ['ui', 'cultivation'];
+                const failedCritical = loadResults.failedModules.filter(m => criticalModules.includes(m));
+
+                if (failedCritical.length > 0) {
+                    const errorMsg = `Critical modules failed to load: ${failedCritical.join(', ')}`;
+                    console.error(errorMsg);
+
+                    if (this.errorManager) {
+                        this.errorManager.handleError(new Error(errorMsg), {
+                            context: 'Module Loading',
+                            failedModules: failedCritical,
+                            loadResults
+                        }, 'critical');
+                    }
+
+                    throw new Error(errorMsg);
+                }
+            }
+
+            return loadResults;
+
+        } catch (error) {
+            console.error('Module loading failed:', error);
+
+            if (this.errorManager) {
+                this.errorManager.handleError(error, {
+                    context: 'Module Loading',
+                    phase: 'module_load'
+                }, 'critical');
+            }
+
+            throw error;
+        }
+    }
+
+    /**
+     * Validate that core systems are ready for module loading
+     * @private
+     */
+    _validateCoreSystemsReady() {
+        const required = [
+            { name: 'EventManager', instance: this.eventManager },
+            { name: 'GameState', instance: this.gameState },
+            { name: 'TimeManager', instance: this.timeManager },
+            { name: 'GameLoop', instance: this.gameLoop },
+            { name: 'ModuleManager', instance: this.moduleManager }
+        ];
+
+        const missing = required.filter(sys => !sys.instance);
+
+        if (missing.length > 0) {
+            const missingNames = missing.map(s => s.name).join(', ');
+            throw new Error(`Core systems not ready for module loading: ${missingNames}`);
         }
 
-        if (loadResults.failedModules.length > 0) {
-            console.error('Failed modules:', loadResults.failedModules);
+        // Check if GameState has been loaded
+        if (!this.gameState.get('meta')) {
+            console.warn('GameState may not be fully initialized - meta information missing');
+        }
+
+        console.log('✅ Core systems validated and ready');
+    }
+
+    /**
+     * Validate module registration
+     * @private
+     */
+    _validateModuleRegistration() {
+        const stats = this.moduleManager.getStatistics();
+
+        if (stats.totalModules === 0) {
+            throw new Error('No modules registered');
+        }
+
+        // Validate dependency graph
+        const depInfo = this.moduleManager.getDependencyInfo();
+        console.log(`📊 Module dependency validation: ${stats.totalModules} modules registered`);
+
+        // Check for potential issues
+        for (const [moduleName, deps] of Object.entries(depInfo.dependencies)) {
+            if (deps.length > 5) {
+                console.warn(`Module '${moduleName}' has many dependencies (${deps.length}): ${deps.join(', ')}`);
+            }
         }
     }
 
@@ -739,6 +892,57 @@ class IdleCultivationGame {
             const totalPlayTime = this.gameState.get('meta.totalPlayTime') || 0;
             this.gameState.set('meta.totalPlayTime', totalPlayTime + sessionTime);
             this.gameState.save();
+        }
+    }
+
+    /**
+     * Activate Safe Mode
+     * @private
+     */
+    async _activateSafeMode() {
+        console.log('[Main] Activating Safe Mode...');
+
+        try {
+            // Ensure safe mode is available
+            if (!window.safeMode) {
+                throw new Error('Safe Mode not available');
+            }
+
+            // Hide any loading UI
+            if (this.loadingProgress) {
+                this.loadingProgress.hide();
+            }
+
+            // Clear the main game UI
+            const gameInterface = document.getElementById('game-interface');
+            if (gameInterface) {
+                gameInterface.style.display = 'none';
+            }
+
+            const characterCreation = document.getElementById('character-creation');
+            if (characterCreation) {
+                characterCreation.style.display = 'none';
+            }
+
+            // Activate safe mode
+            await window.safeMode.activate();
+
+            // Initialize safe mode UI
+            if (typeof SafeModeUI !== 'undefined') {
+                this.safeModeUI = new SafeModeUI(window.safeMode);
+                await this.safeModeUI.initialize();
+            } else {
+                console.error('SafeModeUI not available');
+            }
+
+            console.log('[Main] Safe Mode activated successfully');
+
+        } catch (error) {
+            console.error('[Main] Failed to activate Safe Mode:', error);
+            // If even safe mode fails, the SafeMode class will show emergency fallback
+            if (window.safeMode) {
+                window.safeMode._showEmergencyFallback(error);
+            }
         }
     }
 }
