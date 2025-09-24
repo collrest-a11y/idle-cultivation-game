@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test System Health Dashboard</title>
+    <link rel="stylesheet" href="css/debug-dashboard.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0a0e1a;
+            color: #b8c5d6;
+            font-family: sans-serif;
+        }
+        .test-info {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(26, 31, 46, 0.6);
+            border-radius: 8px;
+        }
+        h1 { color: #00d4ff; }
+        .instruction {
+            padding: 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid #00d4ff;
+            margin: 10px 0;
+        }
+        button {
+            background: #00d4ff;
+            color: #0a0e1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h1>System Health Dashboard Test</h1>
+        
+        <div class="instruction">
+            <strong>Press Ctrl+Shift+D to toggle the dashboard</strong>
+        </div>
+
+        <h2>Test Controls:</h2>
+        <button onclick="testError()">Trigger Test Error</button>
+        <button onclick="testCriticalError()">Trigger Critical Error</button>
+        <button onclick="testModuleLoad()">Simulate Module Load</button>
+        <button onclick="window.systemHealthDashboard?.show()">Show Dashboard</button>
+        <button onclick="window.systemHealthDashboard?.hide()">Hide Dashboard</button>
+
+        <h2>Expected Behavior:</h2>
+        <ul>
+            <li>Dashboard should slide in from the right when Ctrl+Shift+D is pressed</li>
+            <li>Dashboard should show system overview (game status, uptime, memory, FPS)</li>
+            <li>Module status section should display registered modules</li>
+            <li>Error history should log test errors</li>
+            <li>Dashboard should hide when Ctrl+Shift+D is pressed again or close button clicked</li>
+        </ul>
+    </div>
+
+    <!-- Mock game objects for testing -->
+    <script>
+        // Create minimal mock game object
+        window.game = {
+            eventManager: {
+                listeners: {},
+                on(event, callback) {
+                    if (!this.listeners[event]) this.listeners[event] = [];
+                    this.listeners[event].push(callback);
+                },
+                emit(event, data) {
+                    if (this.listeners[event]) {
+                        this.listeners[event].forEach(cb => cb(data));
+                    }
+                }
+            },
+            timeManager: {
+                getTimeInfo() {
+                    return { sessionTime: 123 };
+                }
+            },
+            gameLoop: {
+                getPerformanceMetrics() {
+                    return {
+                        currentFPS: 60,
+                        averageFPS: 59.5,
+                        averageFrameTime: 16.7,
+                        uiUpdatesPerSecond: 60,
+                        gameUpdatesPerSecond: 10,
+                        totalMissedFrames: 0
+                    };
+                }
+            },
+            moduleManager: {
+                modules: new Map([
+                    ['ui', {
+                        name: 'ui',
+                        isLoaded: true,
+                        isLoading: false,
+                        loadStartTime: 100,
+                        loadEndTime: 150,
+                        error: null,
+                        retryCount: 0
+                    }],
+                    ['cultivation', {
+                        name: 'cultivation',
+                        isLoaded: true,
+                        isLoading: false,
+                        loadStartTime: 150,
+                        loadEndTime: 200,
+                        error: null,
+                        retryCount: 0
+                    }],
+                    ['combat', {
+                        name: 'combat',
+                        isLoaded: false,
+                        isLoading: false,
+                        loadStartTime: 0,
+                        loadEndTime: 0,
+                        error: 'Module not found',
+                        retryCount: 2
+                    }]
+                ])
+            },
+            getStatus() {
+                return {
+                    isRunning: true,
+                    isInitialized: true,
+                    isPaused: false
+                };
+            }
+        };
+
+        // Test functions
+        function testError() {
+            window.game.eventManager.emit('error:reported', {
+                message: 'Test error message',
+                category: 'gameplay',
+                timestamp: Date.now(),
+                context: {
+                    source: 'test-dashboard.html'
+                }
+            });
+        }
+
+        function testCriticalError() {
+            window.game.eventManager.emit('game:error', {
+                error: 'Critical test error',
+                stack: 'at testCriticalError (test-dashboard.html:123)',
+                timestamp: Date.now()
+            });
+        }
+
+        function testModuleLoad() {
+            window.game.eventManager.emit('moduleManager:moduleLoaded', {
+                moduleName: 'test-module',
+                loadTime: 45.5,
+                timestamp: Date.now()
+            });
+        }
+    </script>
+
+    <!-- System Health Dashboard -->
+    <script src="js/system-health-dashboard.js"></script>
+</body>
+</html>
