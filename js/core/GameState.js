@@ -20,6 +20,22 @@ class GameState {
         this._eventManager = null; // Will be injected
         this._saveManager = null; // Will be injected
 
+        // State snapshot system for rollback
+        this._snapshots = [];
+        this._maxSnapshots = 10; // Keep last 10 snapshots
+        this._snapshotEnabled = true;
+
+        // Initialization state tracking
+        this._initializationState = {
+            isInitializing: false,
+            isInitialized: false,
+            initStartTime: 0,
+            initEndTime: 0,
+            phase: 'none', // none, loading, ready, error
+            loadedFromSave: false,
+            errors: []
+        };
+
         // Auto-save configuration
         this._autoSaveConfig = {
             enabled: true,
@@ -61,6 +77,68 @@ class GameState {
      */
     setEventManager(eventManager) {
         this._eventManager = eventManager;
+    }
+
+    /**
+     * Get initialization state
+     * @returns {Object} Current initialization state
+     */
+    getInitializationState() {
+        return { ...this._initializationState };
+    }
+
+    /**
+     * Check if GameState is ready for use
+     * @returns {boolean} True if initialized and ready
+     */
+    isReady() {
+        return this._initializationState.isInitialized && this._initializationState.phase === 'ready';
+    }
+
+    /**
+     * Mark initialization as started
+     * @private
+     */
+    _markInitializationStart() {
+        this._initializationState.isInitializing = true;
+        this._initializationState.initStartTime = Date.now();
+        this._initializationState.phase = 'loading';
+    }
+
+    /**
+     * Mark initialization as complete
+     * @private
+     */
+    _markInitializationComplete(loadedFromSave = false) {
+        this._initializationState.isInitializing = false;
+        this._initializationState.isInitialized = true;
+        this._initializationState.initEndTime = Date.now();
+        this._initializationState.phase = 'ready';
+        this._initializationState.loadedFromSave = loadedFromSave;
+
+        if (this._eventManager) {
+            this._eventManager.emit('gameState:initialized', {
+                loadedFromSave,
+                initTime: this._initializationState.initEndTime - this._initializationState.initStartTime
+            });
+        }
+    }
+
+    /**
+     * Mark initialization as failed
+     * @private
+     */
+    _markInitializationError(error) {
+        this._initializationState.isInitializing = false;
+        this._initializationState.phase = 'error';
+        this._initializationState.errors.push({
+            message: error.message,
+            timestamp: Date.now()
+        });
+
+        if (this._eventManager) {
+            this._eventManager.emit('gameState:initError', { error: error.message });
+        }
     }
 
     /**
@@ -327,6 +405,8 @@ class GameState {
      * @returns {Promise<boolean>} Whether the load was successful
      */
     async load(options = {}) {
+        this._markInitializationStart();
+
         try {
             const config = {
                 validate: true,
@@ -348,6 +428,7 @@ class GameState {
             }
 
             if (!saveData) {
+                this._markInitializationComplete(false);
                 return false;
             }
 
@@ -373,6 +454,7 @@ class GameState {
                         gameStateData = repair.data;
                     } else {
                         console.error('GameState: Failed to repair corrupted data');
+                        this._markInitializationError(new Error('Failed to repair corrupted save data'));
                         return false;
                     }
                 }
@@ -392,9 +474,11 @@ class GameState {
                 });
             }
 
+            this._markInitializationComplete(true);
             return true;
         } catch (error) {
             console.error('GameState: Failed to load:', error);
+            this._markInitializationError(error);
             return false;
         }
     }
@@ -1475,6 +1559,216 @@ class GameState {
             timeSinceLastSave: Date.now() - this._lastSaveTime,
             nextAutoSaveIn: Math.max(0, this._autoSaveConfig.interval - (Date.now() - this._lastAutoSaveTime))
         };
+    }
+
+    /**
+     * Create a snapshot of the current state for rollback
+     * @param {string} label - Optional label for the snapshot
+     * @returns {string} Snapshot ID
+     */
+    createSnapshot(label = null) {
+        if (!this._snapshotEnabled) {
+            console.warn('GameState: Snapshots are disabled');
+            return null;
+        }
+
+        const snapshotId = `snapshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const snapshot = {
+            id: snapshotId,
+            label: label || `Auto-snapshot ${this._snapshots.length + 1}`,
+            state: this._deepClone(this._state),
+            timestamp: Date.now(),
+            source: 'manual'
+        };
+
+        this._snapshots.push(snapshot);
+
+        // Maintain max snapshots limit
+        if (this._snapshots.length > this._maxSnapshots) {
+            this._snapshots.shift(); // Remove oldest
+        }
+
+        console.log(`GameState: Snapshot created: ${snapshotId} - ${snapshot.label}`);
+
+        if (this._eventManager) {
+            this._eventManager.emit('gameState:snapshotCreated', {
+                snapshotId,
+                label: snapshot.label,
+                count: this._snapshots.length
+            });
+        }
+
+        return snapshotId;
+    }
+
+    /**
+     * Rollback to a previous snapshot
+     * @param {string} snapshotId - Snapshot ID to rollback to (or null for latest)
+     * @param {Object} options - Rollback options
+     * @returns {boolean} Success status
+     */
+    rollback(snapshotId = null, options = {}) {
+        const config = {
+            validate: true,
+            emit: true,
+            createBackup: true,
+            ...options
+        };
+
+        try {
+            let snapshot;
+
+            if (snapshotId) {
+                snapshot = this._snapshots.find(s => s.id === snapshotId);
+                if (!snapshot) {
+                    throw new Error(`Snapshot not found: ${snapshotId}`);
+                }
+            } else {
+                // Use latest snapshot
+                snapshot = this._snapshots[this._snapshots.length - 1];
+                if (!snapshot) {
+                    throw new Error('No snapshots available for rollback');
+                }
+            }
+
+            // Create backup of current state before rollback
+            if (config.createBackup) {
+                this.createSnapshot('Pre-rollback backup');
+            }
+
+            // Store current state for rollback if validation fails
+            const currentState = this._deepClone(this._state);
+
+            // Apply snapshot state
+            this._state = this._deepClone(snapshot.state);
+
+            // Validate if requested
+            if (config.validate) {
+                this._validateState(this._state);
+            }
+
+            this._isDirty = true;
+
+            console.log(`GameState: Rolled back to snapshot: ${snapshot.id} - ${snapshot.label}`);
+
+            if (config.emit && this._eventManager) {
+                this._eventManager.emit('gameState:rolledBack', {
+                    snapshotId: snapshot.id,
+                    label: snapshot.label,
+                    timestamp: snapshot.timestamp
+                });
+            }
+
+            return true;
+
+        } catch (error) {
+            console.error('GameState: Rollback failed:', error);
+
+            if (this._eventManager) {
+                this._eventManager.emit('gameState:rollbackFailed', {
+                    error: error.message,
+                    snapshotId
+                });
+            }
+
+            return false;
+        }
+    }
+
+    /**
+     * Get list of available snapshots
+     * @returns {Array} List of snapshot info
+     */
+    getSnapshots() {
+        return this._snapshots.map(snapshot => ({
+            id: snapshot.id,
+            label: snapshot.label,
+            timestamp: snapshot.timestamp,
+            source: snapshot.source,
+            age: Date.now() - snapshot.timestamp
+        }));
+    }
+
+    /**
+     * Clear all snapshots
+     * @param {boolean} confirmed - Confirmation flag
+     */
+    clearSnapshots(confirmed = false) {
+        if (!confirmed) {
+            throw new Error('clearSnapshots requires explicit confirmation');
+        }
+
+        const count = this._snapshots.length;
+        this._snapshots = [];
+
+        console.log(`GameState: Cleared ${count} snapshots`);
+
+        if (this._eventManager) {
+            this._eventManager.emit('gameState:snapshotsCleared', { count });
+        }
+    }
+
+    /**
+     * Configure snapshot settings
+     * @param {Object} config - Snapshot configuration
+     */
+    configureSnapshots(config) {
+        if (config.hasOwnProperty('enabled')) {
+            this._snapshotEnabled = config.enabled;
+        }
+
+        if (config.maxSnapshots && config.maxSnapshots > 0) {
+            this._maxSnapshots = config.maxSnapshots;
+
+            // Trim snapshots if new max is lower
+            while (this._snapshots.length > this._maxSnapshots) {
+                this._snapshots.shift();
+            }
+        }
+
+        console.log('GameState: Snapshot configuration updated');
+    }
+
+    /**
+     * Get snapshot configuration
+     * @returns {Object} Snapshot configuration
+     */
+    getSnapshotConfig() {
+        return {
+            enabled: this._snapshotEnabled,
+            maxSnapshots: this._maxSnapshots,
+            currentCount: this._snapshots.length
+        };
+    }
+
+    /**
+     * Create automatic snapshot before risky operation
+     * @param {string} operation - Operation name
+     * @returns {string} Snapshot ID
+     */
+    _createAutoSnapshot(operation) {
+        if (!this._snapshotEnabled) {
+            return null;
+        }
+
+        const snapshot = {
+            id: `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            label: `Before ${operation}`,
+            state: this._deepClone(this._state),
+            timestamp: Date.now(),
+            source: 'automatic'
+        };
+
+        this._snapshots.push(snapshot);
+
+        // Maintain max snapshots limit
+        if (this._snapshots.length > this._maxSnapshots) {
+            this._snapshots.shift();
+        }
+
+        console.log(`GameState: Auto-snapshot created before ${operation}`);
+
+        return snapshot.id;
     }
 }
 

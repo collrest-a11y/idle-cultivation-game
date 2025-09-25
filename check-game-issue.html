@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Issue Check</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .error { color: #f00; }
+        .warning { color: #ff0; }
+        .success { color: #0f0; }
+        .info { color: #0ff; }
+        pre { background: #000; padding: 10px; border: 1px solid #333; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Game Issue Diagnostic</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toISOString().split('T')[1].split('.')[0]}] ${message}`;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        // Override console to capture errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            log('ERROR: ' + args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+
+        log('Starting game issue diagnostic...', 'info');
+    </script>
+
+    <!-- Load game files in order -->
+    <script src="js/utils/DataValidator.js"></script>
+    <script src="js/utils/Validator.js"></script>
+    <script src="js/utils/CurrencyFormatter.js"></script>
+    <script src="js/utils/NotificationManager.js"></script>
+    <script src="js/core/ErrorManager.js"></script>
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/core/TimeManager.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/views/GameView.js"></script>
+    <script src="js/views/BaseView.js"></script>
+    <script src="js/ui/ViewManager.js"></script>
+
+    <script>
+        log('Core scripts loaded. Checking for issues...', 'info');
+
+        // Check what's available
+        const checks = [
+            'DataValidator',
+            'Validator',
+            'CurrencyFormatter',
+            'NotificationManager',
+            'ErrorManager',
+            'EventManager',
+            'GameState',
+            'TimeManager',
+            'GameLoop',
+            'ModuleManager',
+            'GameView',
+            'BaseView',
+            'ViewManager'
+        ];
+
+        let missingCount = 0;
+        checks.forEach(name => {
+            if (typeof window[name] !== 'undefined') {
+                log(`✓ ${name} is loaded`, 'success');
+            } else {
+                log(`✗ ${name} is MISSING`, 'error');
+                missingCount++;
+            }
+        });
+
+        if (missingCount > 0) {
+            log(`\nFound ${missingCount} missing dependencies!`, 'error');
+        } else {
+            log('\nAll core dependencies loaded successfully!', 'success');
+        }
+
+        // Now try to load main.js
+        log('\nAttempting to load main.js...', 'info');
+    </script>
+
+    <script src="js/main.js"></script>
+
+    <script>
+        setTimeout(() => {
+            log('\nChecking game initialization...', 'info');
+
+            if (window.game) {
+                log('✓ Game object created', 'success');
+
+                // Check game properties
+                const props = ['eventManager', 'gameState', 'timeManager', 'gameLoop', 'moduleManager'];
+                props.forEach(prop => {
+                    if (game[prop]) {
+                        log(`  ✓ game.${prop} exists`, 'success');
+                    } else {
+                        log(`  ✗ game.${prop} is undefined`, 'error');
+                    }
+                });
+
+                // Try to get status
+                try {
+                    const status = game.getStatus();
+                    log('\nGame Status:', 'info');
+                    log(JSON.stringify(status, null, 2), 'info');
+                } catch (e) {
+                    log('Failed to get game status: ' + e.message, 'error');
+                }
+            } else {
+                log('✗ Game object not created', 'error');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

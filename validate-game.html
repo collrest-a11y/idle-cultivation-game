@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Loading Validation</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .error { color: #ff0000; }
+        .success { color: #00ff00; }
+        .warning { color: #ffff00; }
+        .info { color: #00ffff; }
+    </style>
+</head>
+<body>
+    <h1>Game Loading Validation</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+        }
+
+        // Override console.error to capture errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            log(`ERROR: ${args.join(' ')}`, 'error');
+            originalError.apply(console, args);
+        };
+
+        log('Starting game validation...', 'info');
+
+        // Test 1: Check if critical files exist
+        const criticalScripts = [
+            'js/core/ModuleManager.js',
+            'js/core/ErrorManager.js',
+            'js/core/GameState.js',
+            'js/core/ProgressiveLoader.js',
+            'js/core/SafeMode.js',
+            'js/main.js'
+        ];
+
+        log('Checking critical scripts...', 'info');
+
+        // Test 2: Check if modules can be created
+        setTimeout(() => {
+            if (typeof ModuleManager !== 'undefined') {
+                log('✓ ModuleManager loaded', 'success');
+            } else {
+                log('✗ ModuleManager not found', 'error');
+            }
+
+            if (typeof ErrorManager !== 'undefined') {
+                log('✓ ErrorManager loaded', 'success');
+            } else {
+                log('✗ ErrorManager not found', 'error');
+            }
+
+            if (typeof GameState !== 'undefined') {
+                log('✓ GameState loaded', 'success');
+            } else {
+                log('✗ GameState not found', 'error');
+            }
+
+            if (typeof ProgressiveLoader !== 'undefined') {
+                log('✓ ProgressiveLoader loaded', 'success');
+            } else {
+                log('✗ ProgressiveLoader not found', 'error');
+            }
+
+            if (typeof SafeMode !== 'undefined') {
+                log('✓ SafeMode loaded', 'success');
+            } else {
+                log('✗ SafeMode not found', 'error');
+            }
+        }, 1000);
+
+        // Test 3: Try to create instances
+        setTimeout(() => {
+            log('Testing instance creation...', 'info');
+
+            try {
+                const errorManager = new ErrorManager();
+                log('✓ ErrorManager instance created', 'success');
+            } catch (e) {
+                log(`✗ ErrorManager creation failed: ${e.message}`, 'error');
+            }
+
+            try {
+                const gameState = new GameState();
+                log('✓ GameState instance created', 'success');
+            } catch (e) {
+                log(`✗ GameState creation failed: ${e.message}`, 'error');
+            }
+
+            try {
+                const moduleManager = new ModuleManager();
+                log('✓ ModuleManager instance created', 'success');
+            } catch (e) {
+                log(`✗ ModuleManager creation failed: ${e.message}`, 'error');
+            }
+
+            try {
+                const progressiveLoader = new ProgressiveLoader();
+                log('✓ ProgressiveLoader instance created', 'success');
+            } catch (e) {
+                log(`✗ ProgressiveLoader creation failed: ${e.message}`, 'error');
+            }
+        }, 2000);
+
+        // Load all the game scripts
+        const scripts = [
+            'js/core/EventManager.js',
+            'js/core/ErrorManager.js',
+            'js/core/TimeManager.js',
+            'js/core/GameLoop.js',
+            'js/core/GameState.js',
+            'js/core/SaveManager.js',
+            'js/core/ModuleManager.js',
+            'js/core/ProgressiveLoader.js',
+            'js/core/SafeMode.js',
+            'js/systems/CultivationIntegration.js',
+            'js/ui/LoadingProgress.js',
+            'js/ui/SafeModeUI.js'
+        ];
+
+        scripts.forEach(script => {
+            const scriptTag = document.createElement('script');
+            scriptTag.src = script;
+            scriptTag.onload = () => log(`Loaded: ${script}`, 'success');
+            scriptTag.onerror = () => log(`Failed to load: ${script}`, 'error');
+            document.head.appendChild(scriptTag);
+        });
+    </script>
+</body>
+</html>

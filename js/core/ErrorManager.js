@@ -174,8 +174,8 @@ class ErrorManager {
                 error = reason;
                 context = {
                     type: 'unhandled_promise_rejection',
-                    stack: reason.stack,
-                    name: reason.name
+                    stack: reason ? reason.stack : undefined,
+                    name: reason ? reason.name : 'Unknown'
                 };
             } else {
                 error = new Error(String(reason || 'Unknown promise rejection'));
@@ -494,9 +494,9 @@ class ErrorManager {
     _normalizeError(error, context, category) {
         if (error instanceof Error) {
             return {
-                message: error.message,
-                stack: error.stack,
-                name: error.name,
+                message: error ? error.message : 'Unknown error',
+                stack: error ? error.stack : undefined,
+                name: error ? error.name : 'UnknownError',
                 category,
                 type: context.type || 'error',
                 severity: this._determineSeverity(category, error)

@@ -14,6 +14,8 @@ class IdleCultivationGame {
         this.timeManager = null;
         this.gameLoop = null;
         this.moduleManager = null;
+        this.progressiveLoader = null;
+        this.loadingProgress = null;
 
         // Game configuration
         this.config = {
@@ -56,7 +58,15 @@ class IdleCultivationGame {
             // Set up lifecycle handlers
             this._setupLifecycleHandlers();
 
-            // Register and load game modules
+            // Initialize progressive loader and UI
+            this._initializeProgressiveLoading();
+
+            // Show loading UI
+            if (this.loadingProgress) {
+                this.loadingProgress.show();
+            }
+
+            // Register and load game modules with progressive loading
             await this._loadGameModules();
 
             // Start the game
@@ -65,7 +75,17 @@ class IdleCultivationGame {
             this.isInitialized = true;
             this.isRunning = true;
 
+            // Initialization successful - reset failure count
+            if (window.safeMode) {
+                window.safeMode.resetFailures();
+            }
+
             console.log('✅ Game initialized successfully');
+
+            // Hide loading screen
+            if (window.LoadingManager) {
+                window.LoadingManager.hide();
+            }
 
             // Emit initialization complete event
             this.eventManager.emit('game:initialized', {
@@ -76,6 +96,26 @@ class IdleCultivationGame {
         } catch (error) {
             console.error('❌ Failed to initialize game:', error);
             this.handleError(error);
+
+            // Record failure and check if we should activate safe mode
+            if (window.safeMode) {
+                const shouldActivateSafeMode = window.safeMode.recordFailure(error, 'game_initialization');
+
+                if (shouldActivateSafeMode) {
+                    // Activate safe mode instead of throwing
+                    console.warn('🛡️ Activating Safe Mode due to repeated failures...');
+                    await this._activateSafeMode();
+                    return; // Don't throw - safe mode is now active
+                }
+            }
+
+            // Show error in loading screen
+            if (window.LoadingManager) {
+                const userMessage = 'Failed to initialize the game. Please refresh the page to try again.';
+                const technicalDetails = `${error.message}\n${error.stack || ''}`;
+                window.LoadingManager.showError(userMessage, technicalDetails);
+            }
+
             throw error;
         }
     }
@@ -331,23 +371,148 @@ class IdleCultivationGame {
         console.log('✅ Core systems initialized');
     }
 
+    _initializeProgressiveLoading() {
+        console.log('🔄 Initializing progressive loading...');
+
+        // Initialize ProgressiveLoader
+        if (typeof ProgressiveLoader !== 'undefined') {
+            this.progressiveLoader = new ProgressiveLoader();
+            this.progressiveLoader.initialize({
+                moduleManager: this.moduleManager,
+                eventManager: this.eventManager
+            });
+            console.log('✅ ProgressiveLoader initialized');
+        } else {
+            console.warn('ProgressiveLoader not available, using standard loading');
+            // Fallback: create a wrapper that uses standard loading
+            this.progressiveLoader = {
+                loadAllPhases: async () => await this.moduleManager.loadAllModules()
+            };
+        }
+
+        // Initialize LoadingProgress UI
+        if (typeof LoadingProgress !== 'undefined') {
+            const loadingContainer = document.getElementById('loading-container') || document.body;
+            this.loadingProgress = new LoadingProgress(loadingContainer);
+            this.loadingProgress.initialize({
+                progressiveLoader: this.progressiveLoader,
+                eventManager: this.eventManager
+            });
+            console.log('✅ LoadingProgress UI initialized');
+        } else {
+            console.warn('LoadingProgress not available, loading UI disabled');
+        }
+    }
+
     async _loadGameModules() {
         console.log('📦 Loading game modules...');
 
-        // Register core game modules
-        this._registerGameModules();
+        try {
+            // Validate core systems before module registration
+            this._validateCoreSystemsReady();
 
-        // Load all modules
-        const loadResults = await this.moduleManager.loadAllModules();
+            // Register core game modules
+            this._registerGameModules();
 
-        if (loadResults.success) {
-            console.log(`✅ Loaded ${loadResults.loadedCount} modules successfully`);
-        } else {
-            console.warn(`⚠️ Module loading completed with ${loadResults.failedCount} failures`);
+            // Validate module registration
+            this._validateModuleRegistration();
+
+            // Load all modules with progressive loading
+            const loadResults = await this.progressiveLoader.loadAllPhases();
+
+            if (loadResults.success) {
+                console.log(`✅ Loaded ${loadResults.loadedCount} modules successfully in ${loadResults.totalTime.toFixed(2)}ms`);
+            } else {
+                console.warn(`⚠️ Module loading completed with ${loadResults.failedCount} failures`);
+            }
+
+            if (loadResults.failedModules.length > 0) {
+                console.error('Failed modules:', loadResults.failedModules);
+
+                // Report critical module failures
+                const criticalModules = ['ui', 'cultivation'];
+                const failedCritical = loadResults.failedModules.filter(m => criticalModules.includes(m));
+
+                if (failedCritical.length > 0) {
+                    const errorMsg = `Critical modules failed to load: ${failedCritical.join(', ')}`;
+                    console.error(errorMsg);
+
+                    if (this.errorManager) {
+                        this.errorManager.reportCriticalError(new Error(errorMsg), {
+                            context: 'Module Loading',
+                            failedModules: failedCritical,
+                            loadResults
+                        });
+                    }
+
+                    throw new Error(errorMsg);
+                }
+            }
+
+            return loadResults;
+
+        } catch (error) {
+            console.error('Module loading failed:', error);
+
+            if (this.errorManager) {
+                this.errorManager.reportError(error, {
+                    context: 'Module Loading',
+                    phase: 'module_load'
+                }, 'critical');
+            }
+
+            throw error;
+        }
+    }
+
+    /**
+     * Validate that core systems are ready for module loading
+     * @private
+     */
+    _validateCoreSystemsReady() {
+        const required = [
+            { name: 'EventManager', instance: this.eventManager },
+            { name: 'GameState', instance: this.gameState },
+            { name: 'TimeManager', instance: this.timeManager },
+            { name: 'GameLoop', instance: this.gameLoop },
+            { name: 'ModuleManager', instance: this.moduleManager }
+        ];
+
+        const missing = required.filter(sys => !sys.instance);
+
+        if (missing.length > 0) {
+            const missingNames = missing.map(s => s ? s.name : 'undefined').join(', ');
+            throw new Error(`Core systems not ready for module loading: ${missingNames}`);
         }
 
-        if (loadResults.failedModules.length > 0) {
-            console.error('Failed modules:', loadResults.failedModules);
+        // Check if GameState has been loaded
+        if (!this.gameState.get('meta')) {
+            console.warn('GameState may not be fully initialized - meta information missing');
+        }
+
+        console.log('✅ Core systems validated and ready');
+    }
+
+    /**
+     * Validate module registration
+     * @private
+     */
+    _validateModuleRegistration() {
+        const stats = this.moduleManager.getStatistics();
+
+        if (stats.totalModules === 0) {
+            throw new Error('No modules registered');
+        }
+
+        // Validate dependency graph
+        const depInfo = this.moduleManager.getDependencyInfo();
+        console.log(`📊 Module dependency validation: ${stats.totalModules} modules registered`);
+
+        // Check for potential issues
+        for (const [moduleName, deps] of Object.entries(depInfo.dependencies)) {
+            if (deps.length > 5) {
+                console.warn(`Module '${moduleName}' has many dependencies (${deps.length}): ${deps.join(', ')}`);
+            }
         }
     }
 
@@ -357,6 +522,7 @@ class IdleCultivationGame {
 
         // UI Module - handles all UI updates and interactions
         this.moduleManager.registerModule('ui', {
+            priority: 100,  // Critical module
             factory: async (context) => {
                 const module = {
                     name: 'UI Module',
@@ -401,11 +567,12 @@ class IdleCultivationGame {
 
         // Cultivation Module - handles cultivation mechanics
         this.moduleManager.registerModule('cultivation', {
+            priority: 90,  // Critical module
             factory: async (context) => {
-                return {
+                const module = {
                     name: 'Cultivation Module',
                     cultivationIntegration: null,
-                    init: async () => {
+                    init: async function() {
                         console.log('Cultivation Module initializing...');
 
                         // Get the cultivation integration instance
@@ -416,16 +583,17 @@ class IdleCultivationGame {
 
                         console.log('Cultivation Module initialized');
                     },
-                    update: (deltaTime) => {
+                    update: function(deltaTime) {
                         // Cultivation system updates itself via integration
                         // This space could be used for additional cultivation-related updates
                     },
-                    shutdown: () => {
+                    shutdown: function() {
                         if (this.cultivationIntegration) {
                             this.cultivationIntegration.shutdown();
                         }
                     }
                 };
+                return module;
             },
             dependencies: [],
             priority: 90
@@ -433,6 +601,7 @@ class IdleCultivationGame {
 
         // Skills Module - handles skill system mechanics
         this.moduleManager.registerModule('skills', {
+            priority: 85,  // UI module
             factory: async (context) => {
                 const module = {
                     name: 'Skills Module',
@@ -519,7 +688,7 @@ class IdleCultivationGame {
         });
 
         // Combat Module - handles combat mechanics
-        this.moduleManager.registerModule('combat', {
+        this.moduleManager.registerModule('combat', { priority: 80,
             factory: async (context) => {
                 return {
                     name: 'Combat Module',
@@ -538,6 +707,7 @@ class IdleCultivationGame {
 
         // Gacha Module - handles scripture gacha system
         this.moduleManager.registerModule('gacha', {
+            priority: 70,
             factory: async (context) => {
                 return {
                     name: 'Gacha Module',
@@ -556,52 +726,68 @@ class IdleCultivationGame {
 
         // Sect Module - handles sect system mechanics
         this.moduleManager.registerModule('sect', {
+            priority: 65,
             factory: async (context) => {
-                return {
+                const module = {
                     name: 'Sect Module',
                     sectSystem: null,
                     sectManager: null,
                     sectActivities: null,
                     sectCompetition: null,
                     sectIntegration: null,
-                    init: async () => {
+                    init: async function() {
                         console.log('Sect Module initializing...');
 
-                        // Initialize sect system components
-                        this.sectSystem = new SectSystem(context.gameState, context.eventManager, window.saveManager);
-                        this.sectManager = new SectManager(context.gameState, context.eventManager, this.sectSystem);
-                        this.sectActivities = new SectActivities(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
-                        this.sectCompetition = new SectCompetition(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
+                        try {
+                            // Check if Sect classes are available
+                            if (typeof SectSystem === 'undefined' ||
+                                typeof SectManager === 'undefined' ||
+                                typeof SectActivities === 'undefined' ||
+                                typeof SectCompetition === 'undefined' ||
+                                typeof SectIntegration === 'undefined') {
+                                console.warn('Sect Module: Required classes not loaded, skipping initialization');
+                                return;
+                            }
 
-                        // Initialize integration last
-                        this.sectIntegration = new SectIntegration();
+                            // Initialize sect system components
+                            this.sectSystem = new SectSystem(context.gameState, context.eventManager, window.saveManager);
+                            this.sectManager = new SectManager(context.gameState, context.eventManager, this.sectSystem);
+                            this.sectActivities = new SectActivities(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
+                            this.sectCompetition = new SectCompetition(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
 
-                        // Get other system references for integration
-                        const cultivationModule = context.moduleManager?.getModule('cultivation');
-                        const cultivationSystem = cultivationModule?.cultivationIntegration;
+                            // Initialize integration last
+                            this.sectIntegration = new SectIntegration();
 
-                        await this.sectIntegration.initialize({
-                            gameState: context.gameState,
-                            eventManager: context.eventManager,
-                            saveManager: window.saveManager,
-                            sectSystem: this.sectSystem,
-                            sectManager: this.sectManager,
-                            sectActivities: this.sectActivities,
-                            sectCompetition: this.sectCompetition,
-                            cultivationSystem: cultivationSystem,
-                            enhancementSystem: null, // Will be added when enhancement system exists
-                            scriptureSystem: null // Will be added when scripture system exists
-                        });
+                            // Get other system references for integration
+                            const cultivationModule = context.moduleManager?.getModule('cultivation');
+                            const cultivationSystem = cultivationModule?.cultivationIntegration;
 
-                        // Initialize individual components
-                        await this.sectSystem.initialize();
-                        await this.sectManager.initialize();
-                        await this.sectActivities.initialize();
-                        await this.sectCompetition.initialize();
+                            await this.sectIntegration.initialize({
+                                gameState: context.gameState,
+                                eventManager: context.eventManager,
+                                saveManager: window.saveManager,
+                                sectSystem: this.sectSystem,
+                                sectManager: this.sectManager,
+                                sectActivities: this.sectActivities,
+                                sectCompetition: this.sectCompetition,
+                                cultivationSystem: cultivationSystem,
+                                enhancementSystem: null, // Will be added when enhancement system exists
+                                scriptureSystem: null // Will be added when scripture system exists
+                            });
 
-                        console.log('Sect Module initialized');
+                            // Initialize individual components
+                            await this.sectSystem.initialize();
+                            await this.sectManager.initialize();
+                            await this.sectActivities.initialize();
+                            await this.sectCompetition.initialize();
+
+                            console.log('Sect Module initialized');
+                        } catch (error) {
+                            console.error('Sect Module initialization failed:', error);
+                            // Don't throw - allow game to continue without sect system
+                        }
                     },
-                    update: (deltaTime) => {
+                    update: function(deltaTime) {
                         // Update sect systems
                         if (this.sectSystem) this.sectSystem.update(deltaTime);
                         if (this.sectActivities) this.sectActivities.update(deltaTime);
@@ -613,6 +799,7 @@ class IdleCultivationGame {
                         console.log('Sect Module shutting down');
                     }
                 };
+                return module; // CRITICAL FIX: Module must be returned
             },
             dependencies: ['cultivation'],
             priority: 65
@@ -620,6 +807,7 @@ class IdleCultivationGame {
 
         // Save Module - handles auto-saving
         this.moduleManager.registerModule('save', {
+            priority: 60,
             factory: async (context) => {
                 return {
                     name: 'Save Module',
@@ -741,6 +929,57 @@ class IdleCultivationGame {
             this.gameState.save();
         }
     }
+
+    /**
+     * Activate Safe Mode
+     * @private
+     */
+    async _activateSafeMode() {
+        console.log('[Main] Activating Safe Mode...');
+
+        try {
+            // Ensure safe mode is available
+            if (!window.safeMode) {
+                throw new Error('Safe Mode not available');
+            }
+
+            // Hide any loading UI
+            if (this.loadingProgress) {
+                this.loadingProgress.hide();
+            }
+
+            // Clear the main game UI
+            const gameInterface = document.getElementById('game-interface');
+            if (gameInterface) {
+                gameInterface.style.display = 'none';
+            }
+
+            const characterCreation = document.getElementById('character-creation');
+            if (characterCreation) {
+                characterCreation.style.display = 'none';
+            }
+
+            // Activate safe mode
+            await window.safeMode.activate();
+
+            // Initialize safe mode UI
+            if (typeof SafeModeUI !== 'undefined') {
+                this.safeModeUI = new SafeModeUI(window.safeMode);
+                await this.safeModeUI.initialize();
+            } else {
+                console.error('SafeModeUI not available');
+            }
+
+            console.log('[Main] Safe Mode activated successfully');
+
+        } catch (error) {
+            console.error('[Main] Failed to activate Safe Mode:', error);
+            // If even safe mode fails, the SafeMode class will show emergency fallback
+            if (window.safeMode) {
+                window.safeMode._showEmergencyFallback(error);
+            }
+        }
+    }
 }
 
 // Initialize and start the game when the page loads
@@ -762,18 +1001,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         console.error('Failed to start game:', error);
 
-        // Show error message to user
-        document.body.innerHTML = `
-            <div style="text-align: center; padding: 50px; font-family: Arial;">
-                <h1>⚠️ Game Failed to Load</h1>
-                <p>Sorry, there was an error starting the game.</p>
-                <p>Please refresh the page to try again.</p>
-                <details>
-                    <summary>Error Details</summary>
-                    <pre>${error.message}</pre>
-                </details>
-            </div>
-        `;
+        // Use LoadingManager to show error if available
+        if (window.LoadingManager) {
+            const userMessage = 'The game failed to start. Please refresh the page to try again.';
+            const technicalDetails = `${error.message}\n${error.stack || ''}`;
+            window.LoadingManager.showError(userMessage, technicalDetails);
+        } else {
+            // Fallback error display if LoadingManager isn't available
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; font-family: Arial;">
+                    <h1>⚠️ Game Failed to Load</h1>
+                    <p>Sorry, there was an error starting the game.</p>
+                    <p>Please refresh the page to try again.</p>
+                    <details>
+                        <summary>Error Details</summary>
+                        <pre>${error.message}</pre>
+                    </details>
+                </div>
+            `;
+        }
     }
 });
 

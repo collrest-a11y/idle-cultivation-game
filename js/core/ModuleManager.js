@@ -22,8 +22,10 @@ class ModuleManager {
         this.config = {
             enableHotReload: false,
             validateDependencies: true,
-            timeoutMs: 30000, // 30 seconds
-            retryAttempts: 3
+            defaultTimeoutMs: 30000, // 30 seconds default timeout
+            retryAttempts: 3,
+            retryDelayMs: 100, // Initial retry delay
+            maxRetryDelayMs: 2000 // Max exponential backoff delay
         };
 
         // Performance tracking
@@ -75,13 +77,15 @@ class ModuleManager {
             dependencies: moduleDefinition.dependencies || [],
             priority: moduleDefinition.priority || 0,
             config: moduleDefinition.config || {},
+            timeoutMs: moduleDefinition.timeoutMs || this.config.defaultTimeoutMs,
             instance: null,
             isLoaded: false,
             isLoading: false,
             loadStartTime: 0,
             loadEndTime: 0,
             error: null,
-            retryCount: 0
+            retryCount: 0,
+            lastError: null
         };
 
         this.modules.set(name, moduleData);
@@ -306,6 +310,122 @@ class ModuleManager {
         return { dependencies, dependents };
     }
 
+    /**
+     * Perform health check on all loaded modules
+     * @returns {Object} Health check results
+     */
+    performHealthCheck() {
+        const results = {
+            timestamp: Date.now(),
+            totalModules: this.modules.size,
+            healthyModules: [],
+            unhealthyModules: [],
+            warnings: []
+        };
+
+        for (const [moduleName, moduleData] of this.modules) {
+            const health = this._checkModuleHealth(moduleName, moduleData);
+
+            if (health.healthy) {
+                results.healthyModules.push({
+                    name: moduleName,
+                    status: 'healthy',
+                    loadTime: moduleData.loadEndTime - moduleData.loadStartTime
+                });
+            } else {
+                results.unhealthyModules.push({
+                    name: moduleName,
+                    status: health.status,
+                    issues: health.issues,
+                    error: moduleData.error
+                });
+            }
+
+            if (health.warnings.length > 0) {
+                results.warnings.push({
+                    module: moduleName,
+                    warnings: health.warnings
+                });
+            }
+        }
+
+        results.healthScore = this.modules.size > 0
+            ? (results.healthyModules.length / this.modules.size) * 100
+            : 0;
+
+        return results;
+    }
+
+    /**
+     * Check health of a specific module
+     * @private
+     */
+    _checkModuleHealth(moduleName, moduleData) {
+        const health = {
+            healthy: true,
+            status: 'unknown',
+            issues: [],
+            warnings: []
+        };
+
+        // Check if module is loaded
+        if (!moduleData.isLoaded) {
+            health.healthy = false;
+            health.status = 'not_loaded';
+
+            if (moduleData.isLoading) {
+                health.issues.push('Module is still loading');
+            } else if (moduleData.error) {
+                health.issues.push(`Module failed to load: ${moduleData.error}`);
+            } else {
+                health.issues.push('Module not loaded');
+            }
+
+            return health;
+        }
+
+        // Check instance validity
+        if (!moduleData.instance) {
+            health.healthy = false;
+            health.status = 'invalid_instance';
+            health.issues.push('Module instance is null/undefined');
+            return health;
+        }
+
+        // Check for critical methods
+        if (typeof moduleData.instance.update === 'function') {
+            // Module has update method - good sign
+            health.warnings.push('Has update method');
+        }
+
+        // Check dependencies
+        for (const depName of moduleData.dependencies) {
+            const depModule = this.modules.get(depName);
+            if (!depModule || !depModule.isLoaded) {
+                health.healthy = false;
+                health.status = 'dependency_failure';
+                health.issues.push(`Dependency '${depName}' is not loaded`);
+            }
+        }
+
+        // Check load time
+        const loadTime = moduleData.loadEndTime - moduleData.loadStartTime;
+        if (loadTime > 5000) {
+            health.warnings.push(`Slow load time: ${loadTime.toFixed(2)}ms`);
+        }
+
+        // Check retry count
+        if (moduleData.retryCount > 0) {
+            health.warnings.push(`Required ${moduleData.retryCount} retries to load`);
+        }
+
+        if (health.healthy) {
+            health.status = 'healthy';
+        }
+
+        return health;
+    }
+
     // Private methods
 
     async _loadModule(moduleName) {
@@ -316,19 +436,8 @@ class ModuleManager {
         }
 
         if (moduleData.isLoading) {
-            // Wait for ongoing load to complete
-            return new Promise((resolve, reject) => {
-                const checkLoaded = () => {
-                    if (moduleData.isLoaded) {
-                        resolve(moduleData.instance);
-                    } else if (moduleData.error) {
-                        reject(new Error(moduleData.error));
-                    } else {
-                        setTimeout(checkLoaded, 100);
-                    }
-                };
-                setTimeout(checkLoaded, 100);
-            });
+            // Wait for ongoing load to complete with timeout
+            return this._waitForModuleLoad(moduleName, moduleData);
         }
 
         moduleData.isLoading = true;
@@ -336,28 +445,12 @@ class ModuleManager {
         moduleData.error = null;
 
         try {
-            // Load dependencies first
-            const dependencyInstances = {};
-            for (const depName of moduleData.dependencies) {
-                dependencyInstances[depName] = await this._loadModule(depName);
-            }
+            // Load module with timeout protection
+            const instance = await this._loadModuleWithTimeout(moduleName, moduleData);
 
-            // Create module context for dependency injection
-            const context = {
-                eventManager: this._eventManager,
-                gameState: this._gameState,
-                timeManager: this._timeManager,
-                gameLoop: this._gameLoop,
-                dependencies: dependencyInstances,
-                config: moduleData.config
-            };
-
-            // Create module instance
-            const instance = await moduleData.factory(context);
-
-            // Initialize module if it has an init method
-            if (instance && typeof instance.init === 'function') {
-                await instance.init();
+            // Validate instance before marking as loaded
+            if (!this._validateModuleInstance(instance, moduleName)) {
+                throw new Error(`Module '${moduleName}' validation failed: invalid instance`);
             }
 
             moduleData.instance = instance;
@@ -382,6 +475,7 @@ class ModuleManager {
         } catch (error) {
             moduleData.isLoading = false;
             moduleData.error = error.message;
+            moduleData.lastError = error;
             moduleData.retryCount++;
 
             this.failedModules.add(moduleName);
@@ -395,14 +489,170 @@ class ModuleManager {
                 });
             }
 
-            // Retry if configured
+            // Retry if configured with exponential backoff
             if (moduleData.retryCount < this.config.retryAttempts) {
-                console.warn(`Retrying module '${moduleName}' (attempt ${moduleData.retryCount + 1})`);
+                const retryDelay = this._calculateRetryDelay(moduleData.retryCount);
+                console.warn(`Retrying module '${moduleName}' in ${retryDelay}ms (attempt ${moduleData.retryCount + 1})`);
+
+                await this._delay(retryDelay);
                 return await this._loadModule(moduleName);
             }
 
-            throw new Error(`Failed to load module '${moduleName}': ${error.message}`);
+            throw new Error(`Failed to load module '${moduleName}' after ${moduleData.retryCount} attempts: ${error.message}`);
         }
+    }
+
+    /**
+     * Load module with timeout protection
+     * @private
+     */
+    async _loadModuleWithTimeout(moduleName, moduleData) {
+        const timeoutMs = moduleData.timeoutMs;
+
+        return Promise.race([
+            this._executeModuleLoad(moduleName, moduleData),
+            new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error(`Module '${moduleName}' initialization timed out after ${timeoutMs}ms`));
+                }, timeoutMs);
+            })
+        ]);
+    }
+
+    /**
+     * Execute the actual module loading logic
+     * @private
+     */
+    async _executeModuleLoad(moduleName, moduleData) {
+        // Load dependencies first
+        const dependencyInstances = {};
+        for (const depName of moduleData.dependencies) {
+            const depInstance = await this._loadModule(depName);
+            if (!depInstance) {
+                throw new Error(`Failed to load dependency '${depName}' for module '${moduleName}'`);
+            }
+            dependencyInstances[depName] = depInstance;
+        }
+
+        // Validate core systems before module creation
+        this._validateCoreystems(moduleName);
+
+        // Create module context for dependency injection
+        const context = {
+            eventManager: this._eventManager,
+            gameState: this._gameState,
+            timeManager: this._timeManager,
+            gameLoop: this._gameLoop,
+            dependencies: dependencyInstances,
+            config: moduleData.config
+        };
+
+        // Create module instance with timeout
+        let instance;
+        try {
+            instance = await moduleData.factory(context);
+        } catch (error) {
+            throw new Error(`Module '${moduleName}' factory failed: ${error.message}`);
+        }
+
+        if (!instance) {
+            throw new Error(`Module '${moduleName}' factory returned null/undefined`);
+        }
+
+        // Initialize module if it has an init method
+        if (typeof instance.init === 'function') {
+            try {
+                await instance.init();
+            } catch (error) {
+                throw new Error(`Module '${moduleName}' init() failed: ${error.message}`);
+            }
+        }
+
+        return instance;
+    }
+
+    /**
+     * Wait for ongoing module load with timeout
+     * @private
+     */
+    async _waitForModuleLoad(moduleName, moduleData) {
+        const startWait = performance.now();
+        const maxWaitTime = moduleData.timeoutMs;
+
+        return new Promise((resolve, reject) => {
+            const checkLoaded = () => {
+                const waitTime = performance.now() - startWait;
+
+                if (moduleData.isLoaded) {
+                    resolve(moduleData.instance);
+                } else if (moduleData.error) {
+                    reject(new Error(moduleData.error));
+                } else if (waitTime >= maxWaitTime) {
+                    reject(new Error(`Timeout waiting for module '${moduleName}' to load`));
+                } else {
+                    setTimeout(checkLoaded, 100);
+                }
+            };
+            setTimeout(checkLoaded, 100);
+        });
+    }
+
+    /**
+     * Validate module instance
+     * @private
+     */
+    _validateModuleInstance(instance, moduleName) {
+        if (!instance) {
+            console.error(`Module '${moduleName}' instance is null/undefined`);
+            return false;
+        }
+
+        // Check for required interface methods (optional but recommended)
+        if (instance.init && typeof instance.init !== 'function') {
+            console.error(`Module '${moduleName}' has invalid init property`);
+            return false;
+        }
+
+        if (instance.update && typeof instance.update !== 'function') {
+            console.error(`Module '${moduleName}' has invalid update property`);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate core systems are available
+     * @private
+     */
+    _validateCoreystems(moduleName) {
+        const missing = [];
+
+        if (!this._eventManager) missing.push('EventManager');
+        if (!this._gameState) missing.push('GameState');
+        if (!this._timeManager) missing.push('TimeManager');
+        if (!this._gameLoop) missing.push('GameLoop');
+
+        if (missing.length > 0) {
+            throw new Error(`Module '${moduleName}' cannot load: missing core systems: ${missing.join(', ')}`);
+        }
+    }
+
+    /**
+     * Calculate retry delay with exponential backoff
+     * @private
+     */
+    _calculateRetryDelay(retryCount) {
+        const delay = this.config.retryDelayMs * Math.pow(2, retryCount - 1);
+        return Math.min(delay, this.config.maxRetryDelayMs);
+    }
+
+    /**
+     * Delay helper for retry logic
+     * @private
+     */
+    _delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     _buildDependencyGraph(moduleName, dependencies) {

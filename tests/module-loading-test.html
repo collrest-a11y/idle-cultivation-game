@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Loading Test - Issue #105</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        .test-info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        #test-output {
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .run-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .run-button:hover {
+            background: #45a049;
+        }
+
+        .run-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin-left: 10px;
+        }
+
+        .status.running {
+            background: #2196F3;
+            color: white;
+        }
+
+        .status.complete {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status.failed {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Module Loading Test Suite</h1>
+
+    <div class="test-info">
+        <h2>Issue #105: Fix Module Loading Order</h2>
+        <p>This test validates the following fixes:</p>
+        <ul>
+            <li><strong>Phase 1 (CRITICAL):</strong> Timeout protection for module loading</li>
+            <li><strong>Phase 2 (HIGH):</strong> Enhanced error handling with validation</li>
+            <li><strong>Additional:</strong> Module health check mechanism</li>
+            <li><strong>Additional:</strong> Initialization state tracking in GameState</li>
+        </ul>
+    </div>
+
+    <button id="runTests" class="run-button">Run Tests</button>
+    <span id="status"></span>
+
+    <h3>Test Output:</h3>
+    <div id="test-output">Waiting to run tests...</div>
+
+    <!-- Load core dependencies -->
+    <script src="../js/core/EventManager.js"></script>
+    <script src="../js/core/GameState.js"></script>
+    <script src="../js/core/ModuleManager.js"></script>
+
+    <!-- Load test suite -->
+    <script src="./module-loading-test.js"></script>
+
+    <script>
+        // Custom console override to capture output
+        const outputDiv = document.getElementById('test-output');
+        const statusSpan = document.getElementById('status');
+        const runButton = document.getElementById('runTests');
+
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        let testOutput = '';
+
+        console.log = function(...args) {
+            const message = args.join(' ');
+            testOutput += message + '\n';
+            outputDiv.textContent = testOutput;
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            const message = '❌ ERROR: ' + args.join(' ');
+            testOutput += message + '\n';
+            outputDiv.textContent = testOutput;
+            originalError.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+            const message = '⚠️ WARN: ' + args.join(' ');
+            testOutput += message + '\n';
+            outputDiv.textContent = testOutput;
+            originalWarn.apply(console, args);
+        };
+
+        // Run tests on button click
+        runButton.addEventListener('click', async () => {
+            testOutput = '';
+            outputDiv.textContent = 'Running tests...\n\n';
+            runButton.disabled = true;
+            statusSpan.innerHTML = '<span class="status running">Running...</span>';
+
+            try {
+                const tester = new ModuleLoadingTest();
+                await tester.runAllTests();
+
+                if (tester.failed === 0) {
+                    statusSpan.innerHTML = '<span class="status complete">All Tests Passed</span>';
+                } else {
+                    statusSpan.innerHTML = '<span class="status failed">Some Tests Failed</span>';
+                }
+            } catch (error) {
+                console.error('Test suite error:', error);
+                statusSpan.innerHTML = '<span class="status failed">Test Suite Error</span>';
+            } finally {
+                runButton.disabled = false;
+            }
+        });
+
+        // Auto-scroll to bottom
+        const observer = new MutationObserver(() => {
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        });
+
+        observer.observe(outputDiv, { childList: true, subtree: true });
+    </script>
+</body>
+</html>

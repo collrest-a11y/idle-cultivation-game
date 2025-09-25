@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trace GameView Error</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .error { color: #f00; font-weight: bold; }
+        .warning { color: #ff0; }
+        .success { color: #0f0; }
+        .info { color: #0ff; }
+        .stack { color: #888; font-size: 0.9em; margin-left: 20px; }
+        pre { background: #000; padding: 10px; border: 1px solid #333; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>GameView Error Tracer</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        let errorCount = 0;
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message.replace(/\n/g, '<br>');
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        // Override console.error to capture GameView errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            const message = args[0];
+            if (message && message.includes && message.includes('GameView')) {
+                errorCount++;
+                log(`\n=== GameView Error #${errorCount} ===`, 'error');
+
+                // Log all arguments
+                args.forEach((arg, i) => {
+                    if (arg instanceof Error) {
+                        log(`Arg[${i}] Error: ${arg.message}`, 'error');
+                        log(`Stack: ${arg.stack}`, 'stack');
+                    } else if (typeof arg === 'object' && arg !== null) {
+                        try {
+                            log(`Arg[${i}]: ${JSON.stringify(arg, null, 2)}`, 'info');
+                        } catch (e) {
+                            log(`Arg[${i}]: [Complex Object]`, 'info');
+                        }
+                    } else {
+                        log(`Arg[${i}]: ${arg}`, 'info');
+                    }
+                });
+
+                // Get stack trace
+                const stack = new Error().stack;
+                log('Call Stack:', 'info');
+                stack.split('\n').slice(2, 7).forEach(line => {
+                    log(line, 'stack');
+                });
+            }
+
+            originalError.apply(console, args);
+        };
+
+        log('GameView Error Tracer initialized', 'success');
+    </script>
+
+    <!-- Load only essential files to isolate the issue -->
+    <script src="js/views/BaseView.js"></script>
+    <script src="js/views/GameView.js"></script>
+    <script src="js/ui/ViewManager.js"></script>
+    <script src="js/views/MainMenuView.js"></script>
+
+    <div id="game-container">
+        <div id="gameView"></div>
+    </div>
+
+    <script>
+        log('\nAttempting to create GameView...', 'info');
+
+        try {
+            // Check if classes exist
+            log('GameView class exists: ' + (typeof GameView !== 'undefined'), 'info');
+            log('MainMenuView class exists: ' + (typeof MainMenuView !== 'undefined'), 'info');
+            log('ViewManager class exists: ' + (typeof ViewManager !== 'undefined'), 'info');
+
+            if (typeof GameView !== 'undefined') {
+                log('\nTrying to instantiate GameView...', 'warning');
+                const gameView = new GameView();
+                log('✓ GameView instantiated', 'success');
+
+                log('\nTrying to render GameView...', 'warning');
+                gameView.render();
+                log('✓ GameView rendered', 'success');
+            }
+
+            if (typeof ViewManager !== 'undefined') {
+                log('\nTrying to instantiate ViewManager...', 'warning');
+                const viewManager = new ViewManager();
+                log('✓ ViewManager instantiated', 'success');
+
+                if (typeof MainMenuView !== 'undefined') {
+                    log('\nRegistering MainMenuView...', 'warning');
+                    viewManager.registerView('main-menu', MainMenuView);
+                    log('✓ MainMenuView registered', 'success');
+
+                    log('\nSwitching to main-menu view...', 'warning');
+                    viewManager.switchTo('main-menu');
+                    log('✓ Switched to main-menu', 'success');
+                } else {
+                    log('✗ MainMenuView not available', 'error');
+                }
+            }
+
+        } catch (error) {
+            log('\nCaught error:', 'error');
+            log('Message: ' + error.message, 'error');
+            log('Stack: ' + error.stack, 'stack');
+        }
+
+        log('\n=== Test Complete ===', 'success');
+        log(`Total GameView errors caught: ${errorCount}`, errorCount > 0 ? 'error' : 'success');
+    </script>
+</body>
+</html>

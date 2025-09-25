@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Mode Test - Idle Cultivation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #e8e8e8;
+            padding: 20px;
+        }
+        .test-panel {
+            background: #2a2a3e;
+            border: 2px solid #4a4a6a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: linear-gradient(135deg, #4a4a6a, #3a3a5a);
+            border: 2px solid #d4af37;
+            color: #e8e8e8;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            border-color: #c9a96e;
+        }
+        .status {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { color: #6bc46b; }
+        .error { color: #ff6b6b; }
+        .warning { color: #d4af37; }
+    </style>
+</head>
+<body>
+    <h1>Safe Mode Test Page</h1>
+
+    <div class="test-panel">
+        <h2>Test Controls</h2>
+        <button onclick="testSafeModeActivation()">Test Safe Mode Activation</button>
+        <button onclick="simulateMultipleFailures()">Simulate 3 Failures (Trigger Safe Mode)</button>
+        <button onclick="resetFailureCount()">Reset Failure Count</button>
+        <button onclick="clearAllData()">Clear All Data</button>
+        <button onclick="viewSafeModeState()">View Safe Mode State</button>
+    </div>
+
+    <div class="test-panel">
+        <h2>Status</h2>
+        <div id="status" class="status">Ready for testing...</div>
+    </div>
+
+    <div class="test-panel">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Click "Simulate 3 Failures" to trigger safe mode immediately</li>
+            <li>Or click "Test Safe Mode Activation" to activate safe mode manually</li>
+            <li>Safe mode UI should appear with cultivation interface</li>
+            <li>Test the meditation button and resource generation</li>
+            <li>Test recovery options (Retry Normal Mode, Clear Save, Export)</li>
+            <li>Use "Reset Failure Count" to reset and test again</li>
+        </ol>
+    </div>
+
+    <!-- Load Safe Mode Scripts -->
+    <script src="js/core/SafeMode.js"></script>
+    <script src="js/ui/SafeModeUI.js"></script>
+
+    <script>
+        let safeModeUI = null;
+
+        function log(message, type = 'info') {
+            const status = document.getElementById('status');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            status.innerHTML += `<div class="${className}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
+            status.scrollTop = status.scrollHeight;
+        }
+
+        async function testSafeModeActivation() {
+            log('Testing safe mode activation...', 'info');
+
+            if (!window.safeMode) {
+                log('Safe mode not available!', 'error');
+                return;
+            }
+
+            try {
+                // Activate safe mode
+                await window.safeMode.activate();
+                log('Safe mode activated successfully!', 'success');
+
+                // Create UI
+                if (typeof SafeModeUI !== 'undefined') {
+                    safeModeUI = new SafeModeUI(window.safeMode);
+                    await safeModeUI.initialize();
+                    log('Safe mode UI initialized!', 'success');
+                } else {
+                    log('SafeModeUI not available', 'error');
+                }
+            } catch (error) {
+                log('Error activating safe mode: ' + error.message, 'error');
+            }
+        }
+
+        async function simulateMultipleFailures() {
+            log('Simulating 3 consecutive failures...', 'warning');
+
+            if (!window.safeMode) {
+                log('Safe mode not available!', 'error');
+                return;
+            }
+
+            // Simulate 3 failures
+            for (let i = 1; i <= 3; i++) {
+                const error = new Error(`Simulated failure #${i}`);
+                const shouldActivate = window.safeMode.recordFailure(error, 'test_simulation');
+                log(`Failure ${i} recorded. Should activate: ${shouldActivate}`, 'warning');
+
+                if (shouldActivate) {
+                    log('Activating safe mode due to failures...', 'warning');
+                    await testSafeModeActivation();
+                    break;
+                }
+            }
+        }
+
+        function resetFailureCount() {
+            if (!window.safeMode) {
+                log('Safe mode not available!', 'error');
+                return;
+            }
+
+            window.safeMode.resetFailures();
+            log('Failure count reset to 0', 'success');
+        }
+
+        function clearAllData() {
+            if (confirm('This will clear ALL localStorage data. Continue?')) {
+                const keys = Object.keys(localStorage);
+                keys.forEach(key => {
+                    if (key.startsWith('idleCultivation')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                log('All game data cleared', 'success');
+            }
+        }
+
+        function viewSafeModeState() {
+            if (!window.safeMode) {
+                log('Safe mode not available!', 'error');
+                return;
+            }
+
+            const state = window.safeMode.getState();
+            log('Safe Mode State:', 'info');
+            log(JSON.stringify(state, null, 2), 'info');
+        }
+
+        // Initial status
+        log('Safe Mode Test Page Loaded', 'success');
+        log('SafeMode available: ' + (typeof window.safeMode !== 'undefined'), 'info');
+        log('SafeModeUI available: ' + (typeof SafeModeUI !== 'undefined'), 'info');
+
+        if (window.safeMode) {
+            const state = window.safeMode.getState();
+            log(`Current failure count: ${state.failureCount}/${window.safeMode.maxFailures}`, 'info');
+        }
+    </script>
+</body>
+</html>

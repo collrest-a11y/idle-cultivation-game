@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Sect Module</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .error { color: #f00; }
+        .warning { color: #ff0; }
+        .success { color: #0f0; }
+        .info { color: #0ff; }
+        pre { background: #000; padding: 10px; border: 1px solid #333; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Sect Module Debug</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toISOString().split('T')[1].split('.')[0]}] ${message}`;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        // Override console.error to capture errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            log('ERROR: ' + args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+
+        log('Starting Sect Module debug...', 'info');
+    </script>
+
+    <!-- Load dependencies -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+
+    <!-- Load Sect modules -->
+    <script>log('Loading SectSystem...', 'info');</script>
+    <script src="js/systems/SectSystem.js"></script>
+    <script>
+        if (typeof SectSystem !== 'undefined') {
+            log('✓ SectSystem loaded', 'success');
+        } else {
+            log('✗ SectSystem NOT loaded', 'error');
+        }
+    </script>
+
+    <script>log('Loading SectManager...', 'info');</script>
+    <script src="js/systems/SectManager.js"></script>
+    <script>
+        if (typeof SectManager !== 'undefined') {
+            log('✓ SectManager loaded', 'success');
+        } else {
+            log('✗ SectManager NOT loaded', 'error');
+        }
+    </script>
+
+    <script>log('Loading SectActivities...', 'info');</script>
+    <script src="js/systems/SectActivities.js"></script>
+    <script>
+        if (typeof SectActivities !== 'undefined') {
+            log('✓ SectActivities loaded', 'success');
+        } else {
+            log('✗ SectActivities NOT loaded', 'error');
+        }
+    </script>
+
+    <script>log('Loading SectCompetition...', 'info');</script>
+    <script src="js/systems/SectCompetition.js"></script>
+    <script>
+        if (typeof SectCompetition !== 'undefined') {
+            log('✓ SectCompetition loaded', 'success');
+        } else {
+            log('✗ SectCompetition NOT loaded', 'error');
+        }
+    </script>
+
+    <script>log('Loading SectIntegration...', 'info');</script>
+    <script src="js/systems/SectIntegration.js"></script>
+    <script>
+        if (typeof SectIntegration !== 'undefined') {
+            log('✓ SectIntegration loaded', 'success');
+        } else {
+            log('✗ SectIntegration NOT loaded', 'error');
+        }
+    </script>
+
+    <script>
+        log('\nTrying to instantiate Sect classes...', 'info');
+
+        try {
+            const eventManager = new EventManager();
+            const gameState = new GameState();
+
+            log('Creating SectSystem instance...', 'info');
+            const sectSystem = new SectSystem(gameState, eventManager, null);
+            log('✓ SectSystem instantiated', 'success');
+
+            log('Creating SectManager instance...', 'info');
+            const sectManager = new SectManager(gameState, eventManager, sectSystem);
+            log('✓ SectManager instantiated', 'success');
+
+            log('Creating SectActivities instance...', 'info');
+            const sectActivities = new SectActivities(gameState, eventManager, sectSystem, sectManager);
+            log('✓ SectActivities instantiated', 'success');
+
+            log('Creating SectCompetition instance...', 'info');
+            const sectCompetition = new SectCompetition(gameState, eventManager, sectSystem, sectManager);
+            log('✓ SectCompetition instantiated', 'success');
+
+            log('Creating SectIntegration instance...', 'info');
+            const sectIntegration = new SectIntegration();
+            log('✓ SectIntegration instantiated', 'success');
+
+            log('\nAll Sect classes instantiated successfully!', 'success');
+
+        } catch (error) {
+            log('Failed to instantiate: ' + error.message, 'error');
+            log('Stack trace: ' + error.stack, 'error');
+        }
+    </script>
+</body>
+</html>

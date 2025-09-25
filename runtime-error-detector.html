@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runtime Error Detection - Idle Cultivation Game</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .error-log {
+            background: #2a2a2a;
+            border: 1px solid #555;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #ff4444;
+            margin: 5px 0;
+        }
+        .warning {
+            color: #ffaa44;
+            margin: 5px 0;
+        }
+        .info {
+            color: #4444ff;
+            margin: 5px 0;
+        }
+        .success {
+            color: #44ff44;
+            margin: 5px 0;
+        }
+        .metrics {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .metric {
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .metric-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        #game-container {
+            display: none; /* Hide the actual game */
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Runtime Error Detection Report</h1>
+    <div id="status">Initializing...</div>
+
+    <div class="metrics" id="metrics">
+        <div class="metric">
+            <div class="metric-value" id="errors-count">0</div>
+            <div class="metric-label">Errors</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value" id="warnings-count">0</div>
+            <div class="metric-label">Warnings</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value" id="load-time">-</div>
+            <div class="metric-label">Load Time (ms)</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value" id="modules-loaded">0</div>
+            <div class="metric-label">Modules Loaded</div>
+        </div>
+    </div>
+
+    <div class="error-log" id="log"></div>
+
+    <!-- Include all the game files to test loading -->
+    <div id="game-container">
+        <!-- This is where the game would run, but we keep it hidden -->
+        <div id="loading-screen"></div>
+        <div id="error-display"></div>
+        <div id="app"></div>
+        <div id="loading-container"></div>
+    </div>
+
+    <!-- Same script loading order as main game -->
+    <script>
+        // Error tracking
+        let errorCount = 0;
+        let warningCount = 0;
+        let loadStartTime = Date.now();
+        let loadEndTime = null;
+
+        // Log function
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+
+            // Update counts
+            if (type === 'error') {
+                errorCount++;
+                document.getElementById('errors-count').textContent = errorCount;
+            } else if (type === 'warning') {
+                warningCount++;
+                document.getElementById('warnings-count').textContent = warningCount;
+            }
+        }
+
+        // Override console methods
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleLog = console.log;
+
+        console.error = function(...args) {
+            addLog(`ERROR: ${args.join(' ')}`, 'error');
+            originalConsoleError.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+            addLog(`WARNING: ${args.join(' ')}`, 'warning');
+            originalConsoleWarn.apply(console, args);
+        };
+
+        console.log = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('✅') || message.includes('initialized')) {
+                addLog(`SUCCESS: ${message}`, 'success');
+            } else {
+                addLog(`INFO: ${message}`, 'info');
+            }
+            originalConsoleLog.apply(console, args);
+        };
+
+        // Global error handlers
+        window.addEventListener('error', (event) => {
+            addLog(`GLOBAL ERROR: ${event.message} in ${event.filename}:${event.lineno}`, 'error');
+            return false; // Don't prevent default handling
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            addLog(`UNHANDLED PROMISE: ${event.reason}`, 'error');
+        });
+
+        // Update status
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            addLog(`STATUS: ${message}`, 'info');
+        }
+
+        updateStatus('Starting error detection...');
+        addLog('🚀 Runtime Error Detection Started', 'info');
+    </script>
+
+    <!-- Core Game Engine -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/ErrorManager.js"></script>
+    <script src="js/core/SafeMode.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/core/TimeManager.js"></script>
+    <script src="js/core/PerformanceMonitor.js"></script>
+    <script src="js/core/BalanceManager.js"></script>
+    <script src="js/core/AnimationManager.js"></script>
+    <script src="js/core/MobileManager.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/core/ProgressiveLoader.js"></script>
+
+    <!-- Additional Core Systems -->
+    <script src="js/utils/StorageUtils.js"></script>
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/DataValidator.js"></script>
+    <script src="js/core/MigrationManager.js"></script>
+    <script src="js/core/StateRecoveryManager.js"></script>
+    <script src="js/core/GameSaveSystem.js"></script>
+    <script src="js/utils/Compression.js"></script>
+
+    <!-- Game Data -->
+    <script src="js/data/cultivation-data.js"></script>
+    <script src="js/data/combat-data.js"></script>
+    <script src="js/data/sect-data.js"></script>
+    <script src="js/data/skill-data.js"></script>
+
+    <!-- Cultivation System Components -->
+    <script src="js/systems/CultivationSystem.js"></script>
+    <script src="js/systems/RealmManager.js"></script>
+    <script src="js/systems/TechniqueManager.js"></script>
+    <script src="js/systems/OfflineCalculator.js"></script>
+    <script src="js/systems/CultivationIntegration.js"></script>
+
+    <!-- Sect System Components -->
+    <script src="js/systems/SectSystem.js"></script>
+    <script src="js/systems/SectManager.js"></script>
+    <script src="js/systems/SectActivities.js"></script>
+    <script src="js/systems/SectCompetition.js"></script>
+    <script src="js/systems/SectIntegration.js"></script>
+
+    <!-- Game Mechanics Systems -->
+    <script src="js/systems/CraftingSystem.js"></script>
+    <script src="js/systems/ShopManager.js"></script>
+
+    <!-- Skills System Components -->
+    <script src="js/managers/SkillManager.js"></script>
+    <script src="js/systems/SkillSystem.js"></script>
+    <script src="js/systems/SkillIntegration.js"></script>
+
+    <!-- UI Framework -->
+    <script src="js/ui/BaseComponent.js"></script>
+    <script src="js/ui/UIManager.js"></script>
+    <script src="js/ui/LoadingProgress.js"></script>
+    <script src="js/ui/SafeModeUI.js"></script>
+    <script src="js/ui/components/RecoveryModal.js"></script>
+
+    <!-- UI Components -->
+    <script src="js/ui/components/SkillTreeComponent.js"></script>
+    <script src="js/ui/components/SkillDetailModal.js"></script>
+
+    <!-- View System -->
+    <script src="js/views/GameView.js"></script>
+    <script src="js/views/ViewManager.js"></script>
+    <script src="js/views/MainMenuView.js"></script>
+    <script src="js/views/CultivationView.js"></script>
+    <script src="js/views/ScriptureView.js"></script>
+    <script src="js/views/CombatView.js"></script>
+    <script src="js/views/SectView.js"></script>
+    <script src="js/views/QuestView.js"></script>
+    <script src="js/views/ViewIntegration.js"></script>
+
+    <!-- CP Progression Systems -->
+    <script src="js/systems/PowerCalculator.js"></script>
+    <script src="js/systems/MountSystem.js"></script>
+    <script src="js/systems/WingSystem.js"></script>
+    <script src="js/systems/AccessorySystem.js"></script>
+    <script src="js/systems/RuneSystem.js"></script>
+    <script src="js/systems/MeridianSystem.js"></script>
+    <script src="js/systems/DantianSystem.js"></script>
+    <script src="js/systems/SoulSystem.js"></script>
+
+    <!-- Character Creation Fallback System -->
+    <script src="js/character-creation-fallback.js"></script>
+
+    <!-- System Health Dashboard -->
+    <script src="js/system-health-dashboard.js"></script>
+
+    <!-- Test Suites -->
+    <script src="js/tests/test-state-validation.js"></script>
+    <script src="js/tests/save-system-integration-tests.js"></script>
+
+    <!-- Main Game Entry Point -->
+    <script src="js/main.js"></script>
+
+    <!-- Test the actual game initialization -->
+    <script>
+        updateStatus('All scripts loaded, testing game initialization...');
+
+        // Override LoadingManager to prevent UI display
+        if (window.LoadingManager) {
+            window.LoadingManager.hide = function() {
+                addLog('LoadingManager.hide() called', 'success');
+            };
+            window.LoadingManager.show = function() {
+                addLog('LoadingManager.show() called', 'info');
+            };
+            window.LoadingManager.showError = function(userMessage, technicalDetails) {
+                addLog(`LoadingManager.showError(): ${userMessage}`, 'error');
+                if (technicalDetails) {
+                    addLog(`Technical details: ${technicalDetails}`, 'error');
+                }
+            };
+        }
+
+        // Wait for DOM to be ready, then test game initialization
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                addLog('DOM Content Loaded, starting game initialization test...', 'info');
+
+                // Track load completion time
+                loadEndTime = Date.now();
+                const loadTime = loadEndTime - loadStartTime;
+                document.getElementById('load-time').textContent = loadTime;
+
+                updateStatus('Testing game initialization...');
+
+                // Create game instance but don't run it
+                if (typeof IdleCultivationGame !== 'undefined') {
+                    addLog('IdleCultivationGame class found', 'success');
+                    const testGame = new IdleCultivationGame();
+
+                    // Test initialization (but catch any errors)
+                    try {
+                        await testGame.init({ debugMode: true });
+                        addLog('Game initialization completed successfully!', 'success');
+                        updateStatus('✅ Game initialization test completed successfully!');
+
+                        // Get module info
+                        if (testGame.moduleManager) {
+                            const stats = testGame.moduleManager.getStatistics();
+                            document.getElementById('modules-loaded').textContent = stats.loadedModules || 0;
+                            addLog(`Modules loaded: ${stats.loadedModules || 0}`, 'success');
+                        }
+
+                        // Stop the game to prevent it from actually running
+                        testGame.stop();
+
+                    } catch (initError) {
+                        addLog(`Game initialization failed: ${initError.message}`, 'error');
+                        updateStatus('❌ Game initialization failed');
+                    }
+                } else {
+                    addLog('IdleCultivationGame class not found!', 'error');
+                    updateStatus('❌ Main game class not available');
+                }
+
+            } catch (error) {
+                addLog(`Test error: ${error.message}`, 'error');
+                updateStatus('❌ Test failed');
+            }
+
+            // Final report
+            setTimeout(() => {
+                addLog('='.repeat(50), 'info');
+                addLog('📊 RUNTIME ERROR DETECTION COMPLETE', 'info');
+                addLog('='.repeat(50), 'info');
+                addLog(`Total Errors: ${errorCount}`, errorCount > 0 ? 'error' : 'success');
+                addLog(`Total Warnings: ${warningCount}`, warningCount > 0 ? 'warning' : 'success');
+                addLog(`Load Time: ${loadEndTime - loadStartTime}ms`, 'info');
+
+                if (errorCount === 0) {
+                    addLog('🎉 No runtime errors detected!', 'success');
+                    updateStatus('✅ All tests passed - No runtime errors detected!');
+                } else {
+                    addLog('⚠️ Runtime errors found - see log above', 'error');
+                    updateStatus('❌ Runtime errors detected - needs fixing');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

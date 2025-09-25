@@ -1,18 +1,53 @@
 // Game State and Core Systems
 class IdleCultivationGame {
     constructor() {
-        this.gameState = this.loadGame() || this.createNewGameState();
+        this.gameState = null;
         this.tickRate = 1000; // 1 second
         this.lastTick = Date.now();
         this.isGameLoaded = false;
 
-        this.initializeEventListeners();
-        this.startGameLoop();
+        // Initialize enhanced save system first
+        this.initializeSaveSystem();
+    }
 
-        if (this.gameState.tutorial.completed) {
-            this.showGameInterface();
-        } else {
-            this.showCharacterCreation();
+    async initializeSaveSystem() {
+        try {
+            // Initialize the enhanced save system
+            if (window.gameSaveSystem) {
+                await window.gameSaveSystem.initialize(this);
+                console.log('Game: Enhanced save system initialized');
+            }
+
+            // Load game or create new state
+            this.gameState = await this.loadGame() || this.createNewGameState();
+
+            // Set up the rest of the game
+            this.initializeEventListeners();
+            this.startGameLoop();
+
+            if (this.gameState.tutorial.completed) {
+                this.showGameInterface();
+            } else {
+                this.showCharacterCreation();
+            }
+
+            this.isGameLoaded = true;
+            console.log('Game: Initialization complete');
+
+        } catch (error) {
+            console.error('Game: Initialization failed:', error);
+
+            // Fallback to basic initialization
+            console.log('Game: Falling back to basic initialization');
+            this.gameState = this.loadGameBasic() || this.createNewGameState();
+            this.initializeEventListeners();
+            this.startGameLoop();
+
+            if (this.gameState.tutorial.completed) {
+                this.showGameInterface();
+            } else {
+                this.showCharacterCreation();
+            }
         }
     }
 
@@ -697,10 +732,77 @@ class IdleCultivationGame {
     }
 
     calculateTotalPower() {
-        const stats = this.gameState.loadout.stats;
-        const baseDPS = (10 + stats.flatDamage) * stats.damageMultiplier * stats.attackSpeed;
-        const critFactor = 1 + (stats.critChance * (stats.critMultiplier - 1));
-        this.gameState.player.power = baseDPS * critFactor;
+        // Use proper combat power calculation if COMBAT_FORMULAS is available
+        if (window.COMBAT_FORMULAS && window.COMBAT_FORMULAS.totalCombatPower) {
+            const { qi, body } = this.gameState.cultivation;
+            const realm = this.gameState.realm.current;
+            const stage = this.gameState.realm.stage;
+
+            // Convert scriptures to the format expected by combat formulas
+            const equippedScriptures = [];
+            Object.values(this.gameState.loadout.slots).forEach(scriptureId => {
+                if (scriptureId) {
+                    const scripture = this.getScriptureById(scriptureId);
+                    if (scripture) {
+                        // Calculate scripture power based on its stats
+                        let power = 0;
+                        Object.entries(scripture.stats).forEach(([stat, value]) => {
+                            if (stat === 'damageMultiplier') {
+                                power += value * 50; // Convert multiplier to power points
+                            } else if (stat === 'flatDamage') {
+                                power += value * 2;
+                            } else if (stat === 'critChance') {
+                                power += value * 100; // Convert percentage to power
+                            } else if (stat === 'critMultiplier') {
+                                power += (value - 1) * 30; // Bonus multiplier to power
+                            } else {
+                                power += Math.abs(value) * 10; // Generic stat conversion
+                            }
+                        });
+
+                        equippedScriptures.push({
+                            power: Math.round(power),
+                            category: scripture.type === 'utility' ? 'utility' : 'combat'
+                        });
+                    }
+                }
+            });
+
+            // Calculate modifiers from character and equipment
+            const modifiers = {
+                powerMultiplier: 1.0,
+                flatBonus: 0
+            };
+
+            // Apply character modifiers as power bonuses
+            Object.entries(this.gameState.character.modifiers).forEach(([key, value]) => {
+                if (key === 'damageMultiplier') {
+                    modifiers.powerMultiplier += value;
+                } else if (key === 'flatDamage') {
+                    modifiers.flatBonus += value * 2;
+                } else {
+                    modifiers.flatBonus += Math.abs(value) * 10;
+                }
+            });
+
+            // Use the proper formula
+            this.gameState.player.power = window.COMBAT_FORMULAS.totalCombatPower(
+                qi.level, body.level, realm, stage, equippedScriptures, {}, modifiers
+            );
+        } else {
+            // Fallback to enhanced basic calculation
+            const stats = this.gameState.loadout.stats;
+            const { qi, body } = this.gameState.cultivation;
+            const realm = this.gameState.realm;
+
+            // Enhanced base power calculation
+            const basePower = (qi.level * 10) + (body.level * 8);
+            const realmMultiplier = 1 + (realm.stage * 0.03);
+            const equipmentPower = (10 + stats.flatDamage) * stats.damageMultiplier * stats.attackSpeed;
+            const critFactor = 1 + (stats.critChance * (stats.critMultiplier - 1));
+
+            this.gameState.player.power = Math.round((basePower * realmMultiplier) + (equipmentPower * critFactor));
+        }
     }
 
     // Realm and Progression System
@@ -856,18 +958,77 @@ class IdleCultivationGame {
     }
 
     processIdleRewards(deltaTime) {
-        // Generate spirit crystals over time
-        const baseRate = 1.0; // 1 crystal per second base
-        const bonusRate = this.gameState.loadout.stats.resourceBonus || 0;
-        const crystalGain = (baseRate * (1 + bonusRate)) * deltaTime;
+        // Calculate cultivation-based resource generation
+        const { qi, body, dual } = this.gameState.cultivation;
+        const realm = this.gameState.realm;
+        const loadoutStats = this.gameState.loadout.stats;
 
+        // Spirit Crystal generation based on cultivation level and realm
+        const baseQiRate = qi.level * 0.1; // 0.1 crystals per second per qi level
+        const baseBodyRate = body.level * 0.05; // Body cultivation contributes less to crystal generation
+        const realmMultiplier = 1 + (realm.stage * 0.1); // 10% bonus per realm stage
+        const bonusRate = loadoutStats.resourceBonus || 0;
+
+        let crystalRate = (baseQiRate + baseBodyRate) * realmMultiplier * (1 + bonusRate);
+
+        // Apply sect bonuses if in a sect
+        if (this.gameState.sect.id && this.gameState.sect.buffs) {
+            this.gameState.sect.buffs.forEach(buff => {
+                if (buff.name === "Resource Gathering") {
+                    crystalRate *= (1 + buff.value);
+                }
+            });
+        }
+
+        // Minimum generation rate (even at low levels)
+        crystalRate = Math.max(0.1, crystalRate);
+
+        const crystalGain = crystalRate * deltaTime;
         this.gameState.player.spiritCrystals += crystalGain;
 
-        // Generate shards from cultivation
-        const shardRate = this.gameState.loadout.stats.shardGain || 0;
+        // Jade generation (much slower, only at higher levels)
+        if (qi.level >= 10 || body.level >= 10) {
+            const jadeRate = Math.max(0, (qi.level + body.level - 20) * 0.01) * realmMultiplier;
+            if (jadeRate > 0) {
+                const jadeGain = jadeRate * deltaTime;
+                this.gameState.player.jade += jadeGain;
+            }
+        }
+
+        // Shard generation from high-level cultivation and special equipment
+        let shardRate = loadoutStats.shardGain || 0;
+
+        // Additional shard generation from dual cultivation
+        if (dual.unlocked && dual.level > 0) {
+            shardRate += dual.level * 0.01; // 0.01 shards per second per dual level
+        }
+
+        // Realm-based shard generation (only at higher realms)
+        const realmIndex = ["Body Refinement", "Qi Condensation", "Foundation", "Core Formation", "Nascent Soul", "Soul Transformation"].indexOf(realm.current);
+        if (realmIndex >= 2) { // Foundation realm and above
+            shardRate += (realmIndex - 1) * 0.02;
+        }
+
         if (shardRate > 0) {
             const shardGain = shardRate * deltaTime;
             this.gameState.player.shards += shardGain;
+        }
+
+        // Material generation (for crafting system integration)
+        if (window.craftingSystem && window.craftingSystem.isInitialized) {
+            // Generate basic materials at low rates
+            const materialRates = {
+                spirit_stone: Math.max(0.01, qi.level * 0.005),
+                iron_ore: Math.max(0.005, body.level * 0.003),
+                spirit_herb: Math.max(0.008, (qi.level + body.level) * 0.002)
+            };
+
+            Object.entries(materialRates).forEach(([material, rate]) => {
+                const materialGain = rate * deltaTime;
+                if (Math.random() < materialGain) {
+                    window.craftingSystem.addMaterial(material, 1);
+                }
+            });
         }
     }
 
@@ -1097,7 +1258,46 @@ class IdleCultivationGame {
         this.startDuel(opponent, 'ranked');
     }
 
-    generateOpponent(power) {
+    generateOpponent(targetPower) {
+        // Use proper opponent data if available
+        if (window.COMBAT_OPPONENTS) {
+            let opponentPool = [];
+
+            // Select opponents based on power level
+            if (targetPower < 100) {
+                opponentPool = window.COMBAT_OPPONENTS.ROGUE_CULTIVATORS || [];
+            } else if (targetPower < 500) {
+                opponentPool = window.COMBAT_OPPONENTS.SECT_DISCIPLES || [];
+            } else if (targetPower < 2000) {
+                opponentPool = window.COMBAT_OPPONENTS.ELITE_CULTIVATORS || [];
+            } else {
+                opponentPool = window.COMBAT_OPPONENTS.LEGENDARY_BEINGS || [];
+            }
+
+            if (opponentPool.length > 0) {
+                const template = opponentPool[Math.floor(Math.random() * opponentPool.length)];
+
+                // Calculate power using proper formulas
+                const opponentPower = window.COMBAT_FORMULAS ?
+                    window.COMBAT_FORMULAS.totalCombatPower(
+                        template.cultivation.qi.level,
+                        template.cultivation.body.level,
+                        template.cultivation.realm,
+                        template.cultivation.stage,
+                        [],
+                        {},
+                        {}
+                    ) : targetPower;
+
+                return {
+                    ...template,
+                    power: opponentPower,
+                    actualPower: opponentPower
+                };
+            }
+        }
+
+        // Fallback to simple generation
         const names = [
             "Iron Fist Zhang", "Flowing River Li", "Thunder Palm Wang",
             "Silent Blade Chen", "Burning Soul Liu", "Jade Mountain Wu",
@@ -1106,9 +1306,19 @@ class IdleCultivationGame {
 
         return {
             name: names[Math.floor(Math.random() * names.length)],
-            power: power,
-            stats: this.generateOpponentStats(power),
-            realm: this.calculateRealmFromPower(power)
+            power: targetPower,
+            realm: this.calculateRealmFromPower(targetPower),
+            loot: this.generateBasicLoot(targetPower)
+        };
+    }
+
+    generateBasicLoot(power) {
+        const baseRewards = Math.max(1, Math.floor(power / 10));
+        return {
+            jade: { min: baseRewards * 5, max: baseRewards * 15 },
+            spiritCrystals: { min: baseRewards, max: baseRewards * 3 },
+            items: ['spirit_stone', 'cultivation_pill'],
+            chance: Math.min(0.8, 0.3 + (power / 1000))
         };
     }
 
@@ -1146,7 +1356,9 @@ class IdleCultivationGame {
     }
 
     startDuel(opponent, type) {
-        const duelResult = this.simulateCombat(this.gameState.loadout.stats, opponent.stats);
+        const playerPower = this.gameState.player.power;
+        const opponentPower = opponent.power;
+        const duelResult = this.simulateCombat(playerPower, opponentPower, opponent.name);
 
         const duel = {
             id: Date.now(),
@@ -1161,28 +1373,40 @@ class IdleCultivationGame {
         this.showDuelResult(duel);
     }
 
-    simulateCombat(playerStats, opponentStats) {
+    simulateCombat(playerPower, opponentPower, opponentName = 'Opponent') {
         const combatLog = [];
-        let playerHP = 100 + (playerStats.flatDamage * 2);
-        let opponentHP = opponentStats.hp || 100;
 
-        const maxRounds = 30; // 30 second combat
+        // Calculate health properly based on power
+        let playerHP, opponentHP;
+        if (window.COMBAT_FORMULAS && window.COMBAT_FORMULAS.maxHealth) {
+            // Estimate levels from power (rough approximation)
+            const playerBodyLevel = Math.floor(playerPower / 20);
+            const opponentBodyLevel = Math.floor(opponentPower / 20);
+            playerHP = window.COMBAT_FORMULAS.maxHealth(playerBodyLevel, this.gameState.realm.current, this.gameState.realm.stage);
+            opponentHP = window.COMBAT_FORMULAS.maxHealth(opponentBodyLevel, "Body Refinement", 1);
+        } else {
+            // Fallback health calculation
+            playerHP = 100 + Math.floor(playerPower * 0.5);
+            opponentHP = 100 + Math.floor(opponentPower * 0.5);
+        }
+
+        const maxRounds = 30;
         let round = 0;
 
         while (playerHP > 0 && opponentHP > 0 && round < maxRounds) {
             round++;
 
             // Player attack
-            const playerDamage = this.calculateDamage(playerStats);
+            const playerDamage = this.calculateDamage(playerPower, opponentPower, 'ATTACK');
             opponentHP -= playerDamage;
-            combatLog.push(`Round ${round}: You deal ${playerDamage.toFixed(1)} damage`);
+            combatLog.push(`Round ${round}: You deal ${playerDamage} damage`);
 
             if (opponentHP <= 0) break;
 
             // Opponent attack
-            const opponentDamage = this.calculateDamage(opponentStats);
+            const opponentDamage = this.calculateDamage(opponentPower, playerPower, 'ATTACK');
             playerHP -= opponentDamage;
-            combatLog.push(`Round ${round}: ${opponentStats.name || 'Opponent'} deals ${opponentDamage.toFixed(1)} damage`);
+            combatLog.push(`Round ${round}: ${opponentName} deals ${opponentDamage} damage`);
         }
 
         const victory = opponentHP <= 0;
@@ -1197,20 +1421,45 @@ class IdleCultivationGame {
         return result;
     }
 
-    calculateDamage(stats) {
-        const baseDamage = (10 + stats.flatDamage) * stats.damageMultiplier;
-        const critRoll = Math.random();
-        const isCrit = critRoll < stats.critChance;
+    calculateDamage(attackerPower, defenderPower, actionType = 'ATTACK', isCritical = null) {
+        // Use proper combat formulas if available
+        if (window.COMBAT_FORMULAS && window.COMBAT_FORMULAS.calculateDamage) {
+            // Determine critical hit if not specified
+            if (isCritical === null) {
+                const critChance = this.gameState.loadout.stats.critChance || 0.05;
+                isCritical = Math.random() < critChance;
+            }
 
-        let damage = baseDamage;
-        if (isCrit) {
-            damage *= stats.critMultiplier;
+            return window.COMBAT_FORMULAS.calculateDamage(
+                attackerPower, defenderPower, actionType, isCritical, this.gameState.loadout.stats
+            );
+        } else {
+            // Fallback calculation with proper power-based damage
+            const stats = this.gameState.loadout.stats;
+            const baseDamage = Math.max(1, attackerPower - (defenderPower * 0.3));
+
+            // Apply action multiplier
+            let actionMultiplier = 1.0;
+            if (actionType === 'TECHNIQUE') actionMultiplier = 1.5;
+            else if (actionType === 'SPECIAL') actionMultiplier = 2.0;
+
+            let damage = baseDamage * actionMultiplier;
+
+            // Apply critical hit
+            if (isCritical === null) {
+                const critRoll = Math.random();
+                isCritical = critRoll < (stats.critChance || 0.05);
+            }
+
+            if (isCritical) {
+                damage *= (stats.critMultiplier || 2.0);
+            }
+
+            // Add variance
+            damage *= (0.9 + Math.random() * 0.2);
+
+            return Math.round(damage);
         }
-
-        // Add some variance
-        damage *= (0.9 + Math.random() * 0.2);
-
-        return damage;
     }
 
     processDuelResult(duel) {
@@ -1234,11 +1483,27 @@ class IdleCultivationGame {
             }
         }
 
-        // Apply rewards
+        // Apply currency rewards
         this.gameState.player.spiritCrystals += rewards.spiritCrystals;
         this.gameState.player.shards += rewards.shards;
         if (rewards.jade > 0) {
             this.gameState.player.jade += rewards.jade;
+        }
+
+        // Process material and item rewards
+        if (rewards.materials && rewards.materials.length > 0) {
+            rewards.materials.forEach(material => {
+                // Materials are already added to crafting system in calculateDuelRewards
+                console.log(`Received ${material.quantity}x ${material.name}`);
+            });
+        }
+
+        if (rewards.items && rewards.items.length > 0) {
+            rewards.items.forEach(item => {
+                // Handle rare item drops
+                this.eventManager.emit('inventory:rare_item_received', item);
+                console.log(`Received rare item: ${item.name}`);
+            });
         }
 
         this.updateUI();
@@ -1246,33 +1511,185 @@ class IdleCultivationGame {
     }
 
     calculateDuelRewards(result, type, opponent) {
-        const baseReward = {
-            spiritCrystals: 10,
-            shards: 1,
-            jade: 0
+        const rewards = {
+            spiritCrystals: 0,
+            shards: 0,
+            jade: 0,
+            materials: [],
+            items: []
         };
 
-        if (result.victory) {
-            baseReward.spiritCrystals *= 2;
-            baseReward.shards *= 2;
-
-            if (type === 'ranked') {
-                baseReward.spiritCrystals *= 1.5;
-                baseReward.shards *= 1.5;
-                baseReward.jade = 5;
-            }
+        if (!result.victory) {
+            // Consolation prizes for losing
+            rewards.spiritCrystals = Math.floor(5 + Math.random() * 5);
+            return rewards;
         }
 
-        // Bonus for streak
-        const streakMultiplier = 1 + (this.gameState.combat.streak * 0.1);
-        baseReward.spiritCrystals *= streakMultiplier;
-        baseReward.shards *= streakMultiplier;
+        // Base rewards based on opponent power and type
+        const opponentPower = opponent.power || 50;
+        const powerMultiplier = Math.max(0.5, opponentPower / 100);
 
-        return {
-            spiritCrystals: Math.floor(baseReward.spiritCrystals),
-            shards: Math.floor(baseReward.shards),
-            jade: Math.floor(baseReward.jade)
+        // Currency rewards
+        rewards.spiritCrystals = Math.floor((15 + Math.random() * 10) * powerMultiplier);
+        rewards.shards = Math.floor((2 + Math.random() * 2) * powerMultiplier);
+
+        if (type === 'ranked') {
+            rewards.spiritCrystals = Math.floor(rewards.spiritCrystals * 1.5);
+            rewards.shards = Math.floor(rewards.shards * 1.5);
+            rewards.jade = Math.floor((3 + Math.random() * 5) * powerMultiplier);
+        }
+
+        // Bonus for win streak
+        const streakMultiplier = 1 + (this.gameState.combat.streak * 0.1);
+        rewards.spiritCrystals = Math.floor(rewards.spiritCrystals * streakMultiplier);
+        rewards.shards = Math.floor(rewards.shards * streakMultiplier);
+
+        // Material drops based on opponent loot table
+        if (opponent.loot) {
+            this.rollForLootDrops(opponent.loot, rewards);
+        } else {
+            // Default material drops
+            this.rollForBasicMaterials(opponentPower, rewards);
+        }
+
+        // Rare item drops (low chance)
+        this.rollForRareItems(opponentPower, type, rewards);
+
+        // Perfect victory bonus (no damage taken)
+        if (result.playerHP === 100 || (result.playerHP / 100 >= 0.95)) {
+            rewards.spiritCrystals = Math.floor(rewards.spiritCrystals * 1.25);
+            rewards.shards += Math.floor(1 + Math.random() * 2);
+        }
+
+        return rewards;
+    }
+
+    rollForLootDrops(lootTable, rewards) {
+        // Process loot from COMBAT_OPPONENTS data
+        if (lootTable.jade && Math.random() < 0.5) {
+            const jadeAmount = Math.floor(
+                lootTable.jade.min + Math.random() * (lootTable.jade.max - lootTable.jade.min)
+            );
+            rewards.jade += jadeAmount;
+        }
+
+        if (lootTable.spiritCrystals && Math.random() < 0.7) {
+            const crystalAmount = Math.floor(
+                lootTable.spiritCrystals.min + Math.random() * (lootTable.spiritCrystals.max - lootTable.spiritCrystals.min)
+            );
+            rewards.spiritCrystals += crystalAmount;
+        }
+
+        if (lootTable.items && lootTable.chance && Math.random() < lootTable.chance) {
+            const item = lootTable.items[Math.floor(Math.random() * lootTable.items.length)];
+            rewards.items.push({
+                id: item,
+                name: this.getItemName(item),
+                type: 'material',
+                quantity: 1
+            });
+        }
+    }
+
+    rollForBasicMaterials(opponentPower, rewards) {
+        const materialChances = {
+            spirit_stone: 0.4,
+            cultivation_pill: 0.25,
+            iron_ore: 0.3,
+            spirit_herb: 0.35,
+            beast_core: 0.15
         };
+
+        // Higher power opponents drop better materials more often
+        const powerBonus = Math.min(0.3, opponentPower / 500);
+
+        Object.entries(materialChances).forEach(([material, chance]) => {
+            const adjustedChance = chance + powerBonus;
+            if (Math.random() < adjustedChance) {
+                const quantity = Math.floor(1 + Math.random() * 3);
+                rewards.materials.push({
+                    id: material,
+                    name: this.getItemName(material),
+                    quantity: quantity
+                });
+
+                // Add to crafting system if available
+                if (window.craftingSystem && window.craftingSystem.isInitialized) {
+                    window.craftingSystem.addMaterial(material, quantity);
+                }
+            }
+        });
+    }
+
+    rollForRareItems(opponentPower, combatType, rewards) {
+        let rareChance = 0.05; // Base 5% chance
+
+        // Increase chance based on opponent power
+        rareChance += Math.min(0.15, opponentPower / 1000);
+
+        // Bonus for ranked combat
+        if (combatType === 'ranked') {
+            rareChance *= 1.5;
+        }
+
+        if (Math.random() < rareChance) {
+            const rareItems = [
+                { id: 'spirit_essence', name: 'Spirit Essence', type: 'material' },
+                { id: 'mystic_crystal', name: 'Mystic Crystal', type: 'material' },
+                { id: 'refined_iron', name: 'Refined Iron', type: 'material' },
+                { id: 'enhancement_stone', name: 'Enhancement Stone', type: 'material' }
+            ];
+
+            // Higher power = better rare items
+            let availableItems = rareItems;
+            if (opponentPower > 200) {
+                availableItems = availableItems.concat([
+                    { id: 'dragon_scale', name: 'Dragon Scale', type: 'material' },
+                    { id: 'phoenix_feather', name: 'Phoenix Feather', type: 'material' }
+                ]);
+            }
+
+            const rareItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+            rewards.items.push({
+                ...rareItem,
+                quantity: 1,
+                rarity: 'rare'
+            });
+
+            // Add to crafting system if available
+            if (window.craftingSystem && window.craftingSystem.isInitialized && rareItem.type === 'material') {
+                window.craftingSystem.addMaterial(rareItem.id, 1);
+            }
+        }
+    }
+
+    getItemName(itemId) {
+        const itemNames = {
+            spirit_stone: 'Spirit Stone',
+            cultivation_pill: 'Cultivation Pill',
+            iron_ore: 'Iron Ore',
+            spirit_herb: 'Spirit Herb',
+            beast_core: 'Beast Core',
+            spirit_essence: 'Spirit Essence',
+            mystic_crystal: 'Mystic Crystal',
+            refined_iron: 'Refined Iron',
+            enhancement_stone: 'Enhancement Stone',
+            dragon_scale: 'Dragon Scale',
+            phoenix_feather: 'Phoenix Feather',
+            healing_pill: 'Healing Pill',
+            sect_manual: 'Sect Manual',
+            technique_scroll: 'Technique Scroll',
+            spirit_wine: 'Spirit Wine',
+            rare_technique: 'Rare Technique',
+            foundation_pill: 'Foundation Pill',
+            golden_core_technique: 'Golden Core Technique',
+            immortal_pill: 'Immortal Pill',
+            nascent_technique: 'Nascent Soul Technique',
+            soul_pill: 'Soul Pill',
+            immortal_artifact: 'Immortal Artifact'
+        };
+
+        return itemNames[itemId] || itemId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
     // Sect System Implementation
@@ -2266,17 +2683,53 @@ class IdleCultivationGame {
         this.saveGame();
     }
 
-    // Save/Load System
-    saveGame() {
-        this.gameState.lastSave = Date.now();
+    // Enhanced Save/Load System
+    async saveGame(options = {}) {
         try {
-            localStorage.setItem('idleCultivationSave', JSON.stringify(this.gameState));
-        } catch (e) {
-            console.error('Failed to save game:', e);
+            this.gameState.lastSave = Date.now();
+
+            // Use enhanced save system if available
+            if (window.gameSaveSystem && window.gameSaveSystem.isInitialized) {
+                return await window.gameSaveSystem.saveGame(options);
+            } else {
+                // Fallback to basic save
+                return this.saveGameBasic(options);
+            }
+        } catch (error) {
+            console.error('Game: Save failed:', error);
+            // Emergency fallback
+            return this.emergencySave();
         }
     }
 
-    loadGame() {
+    async loadGame(options = {}) {
+        try {
+            // Use enhanced save system if available
+            if (window.gameSaveSystem && window.gameSaveSystem.isInitialized) {
+                return await window.gameSaveSystem.loadGame(options);
+            } else {
+                // Fallback to basic load
+                return this.loadGameBasic(options);
+            }
+        } catch (error) {
+            console.error('Game: Load failed:', error);
+            return null;
+        }
+    }
+
+    // Fallback methods for basic save/load
+    saveGameBasic(options = {}) {
+        try {
+            this.gameState.lastSave = Date.now();
+            localStorage.setItem('idleCultivationSave', JSON.stringify(this.gameState));
+            return true;
+        } catch (e) {
+            console.error('Failed to save game (basic):', e);
+            return false;
+        }
+    }
+
+    loadGameBasic(options = {}) {
         try {
             const saveData = localStorage.getItem('idleCultivationSave');
             if (saveData) {
@@ -2285,9 +2738,21 @@ class IdleCultivationGame {
                 return this.migrateSaveData(loaded);
             }
         } catch (e) {
-            console.error('Failed to load game:', e);
+            console.error('Failed to load game (basic):', e);
         }
         return null;
+    }
+
+    emergencySave() {
+        try {
+            console.log('Game: Performing emergency save');
+            this.gameState.lastSave = Date.now();
+            localStorage.setItem('idleCultivationSave_emergency', JSON.stringify(this.gameState));
+            return true;
+        } catch (error) {
+            console.error('Game: Emergency save failed:', error);
+            return false;
+        }
     }
 
     migrateSaveData(saveData) {
