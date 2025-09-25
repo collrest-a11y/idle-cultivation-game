@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trace Error</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .error { color: #f00; font-weight: bold; }
+        .warning { color: #ff0; }
+        .success { color: #0f0; }
+        .info { color: #0ff; }
+        .stack { color: #888; font-size: 0.9em; margin-left: 20px; }
+        pre { background: #000; padding: 10px; border: 1px solid #333; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Error Tracing - Finding "reading 'name'" Error</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        let errorCount = 0;
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message.replace(/\n/g, '<br>');
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        // Intercept all property access errors
+        window.addEventListener('error', (event) => {
+            errorCount++;
+            log(`\n=== ERROR #${errorCount} ===`, 'error');
+            log(`Message: ${event.message}`, 'error');
+            log(`File: ${event.filename}`, 'info');
+            log(`Line: ${event.lineno}, Column: ${event.colno}`, 'info');
+
+            if (event.error && event.error.stack) {
+                log('Stack trace:', 'info');
+                const lines = event.error.stack.split('\n');
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        log(line, 'stack');
+                    }
+                });
+            }
+
+            // Don't prevent default - let it also log to console
+            return false;
+        });
+
+        // Intercept unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            errorCount++;
+            log(`\n=== UNHANDLED PROMISE REJECTION #${errorCount} ===`, 'error');
+            log(`Reason: ${event.reason}`, 'error');
+
+            if (event.reason && event.reason.stack) {
+                log('Stack trace:', 'info');
+                const lines = event.reason.stack.split('\n');
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        log(line, 'stack');
+                    }
+                });
+            }
+        });
+
+        log('Error tracing initialized. Loading game files...', 'success');
+    </script>
+
+    <!-- Load ONLY the core files to isolate the issue -->
+    <script>log('Loading ErrorManager...', 'info');</script>
+    <script src="js/core/ErrorManager.js"></script>
+
+    <script>log('Loading EventManager...', 'info');</script>
+    <script src="js/core/EventManager.js"></script>
+
+    <script>log('Loading GameState...', 'info');</script>
+    <script src="js/core/GameState.js"></script>
+
+    <script>log('Loading TimeManager...', 'info');</script>
+    <script src="js/core/TimeManager.js"></script>
+
+    <script>log('Loading GameLoop...', 'info');</script>
+    <script src="js/core/GameLoop.js"></script>
+
+    <script>log('Loading ModuleManager...', 'info');</script>
+    <script src="js/core/ModuleManager.js"></script>
+
+    <script>log('\nLoading main.js...', 'warning');</script>
+    <script src="js/main.js"></script>
+
+    <script>
+        // After loading, try to check what's available
+        setTimeout(() => {
+            log('\n=== CHECKING GAME STATE ===', 'info');
+
+            if (window.game) {
+                log('✓ Game object exists', 'success');
+
+                // Check properties
+                const props = ['eventManager', 'gameState', 'timeManager', 'gameLoop', 'moduleManager'];
+                props.forEach(prop => {
+                    const exists = window.game[prop];
+                    log(`game.${prop}: ${exists ? '✓ exists' : '✗ undefined'}`, exists ? 'success' : 'error');
+                });
+            } else {
+                log('✗ Game object does not exist', 'error');
+            }
+
+            log(`\nTotal errors caught: ${errorCount}`, errorCount > 0 ? 'error' : 'success');
+        }, 2000);
+    </script>
+</body>
+</html>

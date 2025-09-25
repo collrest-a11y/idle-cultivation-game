@@ -211,6 +211,18 @@ class ProgressiveLoader {
      */
     async _loadPhase(phaseName) {
         const phaseConfig = this.phaseConfig[phaseName];
+
+        // Check if phase config exists
+        if (!phaseConfig) {
+            console.warn(`ProgressiveLoader: Phase "${phaseName}" not found in configuration`);
+            return {
+                phase: phaseName,
+                success: false,
+                error: `Phase configuration not found for: ${phaseName}`,
+                modules: []
+            };
+        }
+
         this.currentPhase = phaseName;
         this.phaseStartTime = performance.now();
 
@@ -218,9 +230,9 @@ class ProgressiveLoader {
         if (this.callbacks.onPhaseStart) {
             this.callbacks.onPhaseStart({
                 phase: phaseName,
-                name: phaseConfig.name,
-                description: phaseConfig.description,
-                moduleCount: phaseConfig.modules.length,
+                name: phaseConfig.name || phaseName,
+                description: phaseConfig.description || '',
+                moduleCount: phaseConfig.modules ? phaseConfig.modules.length : 0,
                 progress: this.completedPhases / this.totalPhases
             });
         }
@@ -239,12 +251,17 @@ class ProgressiveLoader {
             failed: [],
             startTime: this.phaseStartTime,
             endTime: 0,
-            duration: 0
+            duration: 0,
+            modules: phaseConfig.modules || []
         };
 
         try {
             // Load modules in this phase with timeout
-            await this._loadPhaseModules(phaseConfig, phaseResults);
+            if (phaseConfig.modules && phaseConfig.modules.length > 0) {
+                await this._loadPhaseModules(phaseConfig, phaseResults);
+            } else {
+                console.warn(`ProgressiveLoader: Phase "${phaseName}" has no modules to load`);
+            }
 
             phaseResults.endTime = performance.now();
             phaseResults.duration = phaseResults.endTime - phaseResults.startTime;
