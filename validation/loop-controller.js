@@ -7,6 +7,7 @@ import { ConvergenceDetector } from './convergence-detector.js';
 import { ErrorPrioritizer } from './error-prioritizer.js';
 import { LoopStateManager } from './loop-state-manager.js';
 import { SafetyMechanisms } from './safety-mechanisms.js';
+import { LoopIntegration } from './reporting/loop-integration.js';
 import fs from 'fs-extra';
 import path from 'path';
 
@@ -52,6 +53,17 @@ export class LoopController {
     this.errorPrioritizer = new ErrorPrioritizer(config.prioritizer);
     this.stateManager = new LoopStateManager(config.stateManager);
     this.safetyMechanisms = new SafetyMechanisms(config.safety);
+
+    // Initialize reporting integration
+    this.reportingIntegration = new LoopIntegration({
+      enableReporter: config.enableEnhancedReporting !== false,
+      enableAnalytics: config.enableAnalytics !== false,
+      enableMetrics: config.enableMetrics !== false,
+      enableTrends: config.enableTrends !== false,
+      enableReportGeneration: config.enableReportGeneration !== false,
+      realTimeUpdates: config.realTimeUpdates !== false,
+      ...config.reporting
+    });
 
     // Tracking data
     this.errorHistory = [];
@@ -128,6 +140,9 @@ export class LoopController {
     // Initialize components
     await this.validationPipeline.initialize?.();
     await this.reporter.initialize();
+
+    // Initialize enhanced reporting integration
+    await this.reportingIntegration.initialize(this);
 
     console.log('✅ All systems initialized successfully');
   }
@@ -797,6 +812,11 @@ export class LoopController {
         fixHistory: this.fixHistory,
         iterationResults: this.iterationResults
       });
+
+      // Clean up reporting integration
+      if (this.reportingIntegration) {
+        await this.reportingIntegration.cleanup();
+      }
 
     } catch (error) {
       console.warn('⚠️ Cleanup warning:', error.message);
