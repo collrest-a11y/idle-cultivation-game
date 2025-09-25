@@ -20,12 +20,17 @@ Starting with Task 001: Playwright Infrastructure Setup as it's the foundation f
                 └─> 008-cicd-integration (Blocked by 006)
 ```
 
-## Active Work
-- **Task 001**: Playwright Infrastructure Setup
+## Completed Tasks
+- **Task 001**: Playwright Infrastructure Setup ✅
   - GitHub Issue: #122
-  - Status: Starting
-  - Priority: P0 (Critical)
-  - Work: Setting up Playwright for multi-browser testing
+  - Status: Completed
+  - Deliverables:
+    - Playwright installed with all browsers
+    - Configuration for multi-browser testing
+    - Game-specific test helpers
+    - Base test class
+    - Smoke tests
+    - Test scripts in package.json
 
 ## Next Tasks (After 001)
 - Task 002: Comprehensive Test Suite (can run parallel with 003)
