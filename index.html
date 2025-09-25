@@ -753,10 +753,12 @@
     <script src="js/core/ProgressiveLoader.js"></script>
 
     <!-- Additional Core Systems -->
+    <script src="js/utils/StorageUtils.js"></script>
     <script src="js/core/SaveManager.js"></script>
     <script src="js/core/DataValidator.js"></script>
     <script src="js/core/MigrationManager.js"></script>
     <script src="js/core/StateRecoveryManager.js"></script>
+    <script src="js/core/GameSaveSystem.js"></script>
     <script src="js/utils/Compression.js"></script>
 
     <!-- Game Data -->
@@ -821,6 +823,10 @@
 
     <!-- System Health Dashboard (loads before main for early error tracking) -->
     <script src="js/system-health-dashboard.js"></script>
+
+    <!-- Test Suites -->
+    <script src="js/tests/test-state-validation.js"></script>
+    <script src="js/tests/save-system-integration-tests.js"></script>
 
     <!-- Main Game Entry Point -->
     <script src="js/main.js"></script>

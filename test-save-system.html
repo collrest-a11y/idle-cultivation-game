@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Save System Test Runner - Idle Cultivation Game</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #444;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            margin: 20px 0;
+            padding: 20px;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5a6578;
+        }
+
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+        }
+
+        .test-results {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #2d5a2d;
+            color: #90ee90;
+        }
+
+        .status.error {
+            background: #5a2d2d;
+            color: #ff6b6b;
+        }
+
+        .status.info {
+            background: #2d4a5a;
+            color: #87ceeb;
+        }
+
+        .progress {
+            background: #333;
+            border-radius: 10px;
+            padding: 3px;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            background: #4caf50;
+            height: 20px;
+            border-radius: 7px;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Save System Test Runner</h1>
+            <p>Comprehensive testing suite for the Idle Cultivation Game save system</p>
+        </div>
+
+        <div class="test-section">
+            <h2>System Status</h2>
+            <div id="system-status">Checking system status...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <div class="test-controls">
+                <button id="run-all-tests" onclick="runAllTests()">Run All Tests</button>
+                <button id="run-basic-tests" onclick="runBasicTests()">Basic Tests Only</button>
+                <button id="run-state-validation" onclick="runStateValidation()">State Validation Tests</button>
+                <button id="run-integration-tests" onclick="runIntegrationTests()">Integration Tests</button>
+                <button id="clear-results" onclick="clearResults()">Clear Results</button>
+            </div>
+            <div class="progress">
+                <div id="progress-bar" class="progress-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="test-results" class="test-results">
+                Ready to run tests. Click any test button above to begin.
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Save System Information</h2>
+            <div id="save-system-info" class="test-results">
+                Loading save system information...
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Required Dependencies -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/ErrorManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/utils/StorageUtils.js"></script>
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/DataValidator.js"></script>
+    <script src="js/core/GameSaveSystem.js"></script>
+    <script src="js/tests/test-state-validation.js"></script>
+    <script src="js/tests/save-system-integration-tests.js"></script>
+
+    <script>
+        // Test runner state
+        let isTestRunning = false;
+        let currentProgress = 0;
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkSystemStatus();
+            await displaySaveSystemInfo();
+        });
+
+        async function checkSystemStatus() {
+            const statusDiv = document.getElementById('system-status');
+            const statuses = [];
+
+            // Check if dependencies are loaded
+            const deps = [
+                { name: 'StorageUtils', obj: window.StorageUtils },
+                { name: 'SaveManager', obj: window.saveManager },
+                { name: 'DataValidator', obj: window.dataValidator },
+                { name: 'GameState', obj: window.gameState },
+                { name: 'GameSaveSystem', obj: window.gameSaveSystem },
+                { name: 'State Validation Tests', obj: window.stateValidationTests },
+                { name: 'Integration Tests', obj: window.saveSystemTests }
+            ];
+
+            for (const dep of deps) {
+                const status = dep.obj ? 'success' : 'error';
+                const icon = dep.obj ? '✅' : '❌';
+                statuses.push(`<div class="status ${status}">${icon} ${dep.name}: ${dep.obj ? 'Loaded' : 'Not Available'}</div>`);
+            }
+
+            // Check storage health
+            try {
+                const healthCheck = await StorageUtils.checkHealth();
+                const healthStatus = healthCheck.isHealthy ? 'success' : 'error';
+                const healthIcon = healthCheck.isHealthy ? '✅' : '❌';
+                statuses.push(`<div class="status ${healthStatus}">${healthIcon} Storage Health: ${healthCheck.isHealthy ? 'Good' : 'Issues Detected'}</div>`);
+
+                if (healthCheck.issues.length > 0) {
+                    statuses.push(`<div class="status error">Issues: ${healthCheck.issues.join(', ')}</div>`);
+                }
+            } catch (error) {
+                statuses.push(`<div class="status error">❌ Storage Health Check Failed: ${error.message}</div>`);
+            }
+
+            statusDiv.innerHTML = statuses.join('');
+        }
+
+        async function displaySaveSystemInfo() {
+            const infoDiv = document.getElementById('save-system-info');
+            const info = [];
+
+            try {
+                // Storage information
+                const storageInfo = await StorageUtils.getStorageInfo();
+                info.push('=== Storage Information ===');
+                info.push(`Available: ${storageInfo.available}`);
+                info.push(`Quota: ${(storageInfo.quota / 1024 / 1024).toFixed(2)} MB`);
+                info.push(`Usage: ${(storageInfo.usage / 1024 / 1024).toFixed(2)} MB (${storageInfo.usagePercent.toFixed(1)}%)`);
+                info.push(`Remaining: ${(storageInfo.remaining / 1024 / 1024).toFixed(2)} MB`);
+                info.push('');
+
+                // SaveManager information
+                if (window.saveManager) {
+                    const saveManagerInfo = window.saveManager.getStorageInfo();
+                    info.push('=== SaveManager Information ===');
+                    info.push(`Storage Type: ${saveManagerInfo.storageType}`);
+                    info.push(`Compression Enabled: ${saveManagerInfo.compressionEnabled}`);
+                    info.push(`Max Chunk Size: ${(saveManagerInfo.maxChunkSize / 1024).toFixed(2)} KB`);
+                    info.push(`Total Saves: ${saveManagerInfo.stats.totalSaves}`);
+                    info.push(`Total Loads: ${saveManagerInfo.stats.totalLoads}`);
+                    info.push(`Total Failures: ${saveManagerInfo.stats.totalFailures}`);
+                    info.push('');
+
+                    // List save slots
+                    const saveSlots = window.saveManager.listSaveSlots();
+                    info.push('=== Available Save Slots ===');
+                    if (saveSlots.length === 0) {
+                        info.push('No save slots found');
+                    } else {
+                        saveSlots.forEach(slot => {
+                            info.push(`${slot.key}: ${(slot.size / 1024).toFixed(2)} KB (${new Date(slot.lastModified).toLocaleString()})`);
+                        });
+                    }
+                    info.push('');
+                }
+
+                // DataValidator stats
+                if (window.dataValidator) {
+                    const validatorStats = window.dataValidator.getStats();
+                    info.push('=== DataValidator Statistics ===');
+                    info.push(`Total Validations: ${validatorStats.totalValidations}`);
+                    info.push(`Successful: ${validatorStats.successfulValidations}`);
+                    info.push(`Failed: ${validatorStats.failedValidations}`);
+                    info.push(`Corruption Detected: ${validatorStats.corruptionDetected}`);
+                    info.push(`Sanitizations: ${validatorStats.sanitizationPerformed}`);
+                    info.push('');
+                }
+
+                // GameState information
+                if (window.gameState && window.gameState.isReady()) {
+                    const autoSaveStats = window.gameState.getAutoSaveStats();
+                    info.push('=== GameState Auto-Save ===');
+                    info.push(`Enabled: ${autoSaveStats.enabled}`);
+                    info.push(`Interval: ${autoSaveStats.interval}ms`);
+                    info.push(`Unsaved Changes: ${autoSaveStats.unsavedChanges}`);
+                    info.push(`Last Save: ${autoSaveStats.lastSaveTime > 0 ? new Date(autoSaveStats.lastSaveTime).toLocaleString() : 'Never'}`);
+                    info.push(`Time Since Last Save: ${(autoSaveStats.timeSinceLastSave / 1000).toFixed(1)}s`);
+                }
+
+            } catch (error) {
+                info.push(`Error getting save system info: ${error.message}`);
+            }
+
+            infoDiv.textContent = info.join('\n');
+        }
+
+        async function runAllTests() {
+            if (isTestRunning) return;
+
+            setTestRunning(true);
+            logMessage('Starting comprehensive save system tests...', 'info');
+
+            try {
+                updateProgress(10, 'Running state validation tests...');
+                await runStateValidation();
+
+                updateProgress(50, 'Running integration tests...');
+                await runIntegrationTests();
+
+                updateProgress(100, 'All tests completed!');
+                logMessage('All save system tests completed successfully!', 'success');
+
+            } catch (error) {
+                logMessage(`Test suite failed: ${error.message}`, 'error');
+            } finally {
+                setTestRunning(false);
+            }
+        }
+
+        async function runBasicTests() {
+            if (isTestRunning) return;
+
+            setTestRunning(true);
+            logMessage('Running basic save system tests...', 'info');
+
+            try {
+                updateProgress(25, 'Testing basic save/load...');
+
+                // Test 1: Storage availability
+                const storageAvailable = StorageUtils.isLocalStorageAvailable();
+                logMessage(`Storage available: ${storageAvailable}`, storageAvailable ? 'success' : 'error');
+
+                updateProgress(50, 'Testing data validation...');
+
+                // Test 2: Data validator
+                if (window.dataValidator) {
+                    const testData = { player: { jade: 100 }, meta: { version: '1.0' } };
+                    const validation = window.dataValidator.validate(testData, 'gameState');
+                    logMessage(`Data validation: ${validation.isValid ? 'PASS' : 'FAIL'}`, validation.isValid ? 'success' : 'error');
+                }
+
+                updateProgress(75, 'Testing save manager...');
+
+                // Test 3: SaveManager basic functionality
+                if (window.saveManager) {
+                    const testSave = await window.saveManager.save('test_basic', { test: true, timestamp: Date.now() });
+                    const testLoad = await window.saveManager.load('test_basic');
+                    logMessage(`SaveManager test: ${testSave && testLoad ? 'PASS' : 'FAIL'}`, testSave && testLoad ? 'success' : 'error');
+
+                    // Cleanup
+                    window.saveManager.delete('test_basic');
+                }
+
+                updateProgress(100, 'Basic tests completed!');
+                logMessage('Basic save system tests completed!', 'success');
+
+            } catch (error) {
+                logMessage(`Basic tests failed: ${error.message}`, 'error');
+            } finally {
+                setTestRunning(false);
+            }
+        }
+
+        async function runStateValidation() {
+            if (isTestRunning) return;
+
+            if (!window.stateValidationTests) {
+                logMessage('State validation tests not available', 'error');
+                return;
+            }
+
+            setTestRunning(true);
+            logMessage('Running state validation tests...', 'info');
+
+            try {
+                const results = await window.stateValidationTests.runAllTests();
+                logMessage(`State validation tests completed! Success rate: ${results ? 'Available' : 'Check console for details'}`, 'success');
+            } catch (error) {
+                logMessage(`State validation tests failed: ${error.message}`, 'error');
+            } finally {
+                setTestRunning(false);
+            }
+        }
+
+        async function runIntegrationTests() {
+            if (isTestRunning) return;
+
+            if (!window.saveSystemTests) {
+                logMessage('Integration tests not available', 'error');
+                return;
+            }
+
+            setTestRunning(true);
+            logMessage('Running save system integration tests...', 'info');
+
+            try {
+                const results = await window.saveSystemTests.runAllTests();
+                const successRate = results.successRate.toFixed(1);
+                logMessage(`Integration tests completed! Success rate: ${successRate}% (${results.passed}/${results.total})`,
+                    results.failed === 0 ? 'success' : 'error');
+
+                if (results.failed > 0) {
+                    logMessage(`Failed tests: ${results.results.filter(r => !r.passed).map(r => r.name).join(', ')}`, 'error');
+                }
+            } catch (error) {
+                logMessage(`Integration tests failed: ${error.message}`, 'error');
+            } finally {
+                setTestRunning(false);
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').textContent = 'Results cleared. Ready to run tests.';
+            updateProgress(0, '');
+        }
+
+        function logMessage(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = { success: '✅', error: '❌', info: 'ℹ️' }[type] || 'ℹ️';
+
+            resultsDiv.textContent += `[${timestamp}] ${icon} ${message}\n`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function updateProgress(percent, message) {
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = `${percent}%`;
+            progressBar.textContent = message || `${percent}%`;
+            currentProgress = percent;
+        }
+
+        function setTestRunning(running) {
+            isTestRunning = running;
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.id !== 'clear-results') {
+                    btn.disabled = running;
+                }
+            });
+
+            if (!running) {
+                setTimeout(() => updateProgress(0, ''), 2000);
+            }
+        }
+    </script>
+</body>
+</html>

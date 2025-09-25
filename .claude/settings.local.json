@@ -34,7 +34,11 @@
       "WebFetch(domain:playwright.dev)",
       "Bash(git branch:*)",
       "Bash(git reset:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Read(//c/Users/Brendan/Documents/GitHub/epic-Fix-Game/.claude/epics/Fix-Game/**)",
+      "WebSearch",
+      "WebFetch(domain:docs.google.com)",
+      "Read(//c/Users/Brendan/Documents/GitHub/epic-Fix-Game/**)"
     ],
     "deny": [],
     "ask": []

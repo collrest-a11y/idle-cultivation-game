@@ -481,7 +481,7 @@ class IdleCultivationGame {
         const missing = required.filter(sys => !sys.instance);
 
         if (missing.length > 0) {
-            const missingNames = missing.map(s => s.name).join(', ');
+            const missingNames = missing.map(s => s ? s.name : 'undefined').join(', ');
             throw new Error(`Core systems not ready for module loading: ${missingNames}`);
         }
 
@@ -728,51 +728,66 @@ class IdleCultivationGame {
         this.moduleManager.registerModule('sect', {
             priority: 65,
             factory: async (context) => {
-                return {
+                const module = {
                     name: 'Sect Module',
                     sectSystem: null,
                     sectManager: null,
                     sectActivities: null,
                     sectCompetition: null,
                     sectIntegration: null,
-                    init: async () => {
+                    init: async function() {
                         console.log('Sect Module initializing...');
 
-                        // Initialize sect system components
-                        this.sectSystem = new SectSystem(context.gameState, context.eventManager, window.saveManager);
-                        this.sectManager = new SectManager(context.gameState, context.eventManager, this.sectSystem);
-                        this.sectActivities = new SectActivities(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
-                        this.sectCompetition = new SectCompetition(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
+                        try {
+                            // Check if Sect classes are available
+                            if (typeof SectSystem === 'undefined' ||
+                                typeof SectManager === 'undefined' ||
+                                typeof SectActivities === 'undefined' ||
+                                typeof SectCompetition === 'undefined' ||
+                                typeof SectIntegration === 'undefined') {
+                                console.warn('Sect Module: Required classes not loaded, skipping initialization');
+                                return;
+                            }
 
-                        // Initialize integration last
-                        this.sectIntegration = new SectIntegration();
+                            // Initialize sect system components
+                            this.sectSystem = new SectSystem(context.gameState, context.eventManager, window.saveManager);
+                            this.sectManager = new SectManager(context.gameState, context.eventManager, this.sectSystem);
+                            this.sectActivities = new SectActivities(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
+                            this.sectCompetition = new SectCompetition(context.gameState, context.eventManager, this.sectSystem, this.sectManager);
 
-                        // Get other system references for integration
-                        const cultivationModule = context.moduleManager?.getModule('cultivation');
-                        const cultivationSystem = cultivationModule?.cultivationIntegration;
+                            // Initialize integration last
+                            this.sectIntegration = new SectIntegration();
 
-                        await this.sectIntegration.initialize({
-                            gameState: context.gameState,
-                            eventManager: context.eventManager,
-                            saveManager: window.saveManager,
-                            sectSystem: this.sectSystem,
-                            sectManager: this.sectManager,
-                            sectActivities: this.sectActivities,
-                            sectCompetition: this.sectCompetition,
-                            cultivationSystem: cultivationSystem,
-                            enhancementSystem: null, // Will be added when enhancement system exists
-                            scriptureSystem: null // Will be added when scripture system exists
-                        });
+                            // Get other system references for integration
+                            const cultivationModule = context.moduleManager?.getModule('cultivation');
+                            const cultivationSystem = cultivationModule?.cultivationIntegration;
 
-                        // Initialize individual components
-                        await this.sectSystem.initialize();
-                        await this.sectManager.initialize();
-                        await this.sectActivities.initialize();
-                        await this.sectCompetition.initialize();
+                            await this.sectIntegration.initialize({
+                                gameState: context.gameState,
+                                eventManager: context.eventManager,
+                                saveManager: window.saveManager,
+                                sectSystem: this.sectSystem,
+                                sectManager: this.sectManager,
+                                sectActivities: this.sectActivities,
+                                sectCompetition: this.sectCompetition,
+                                cultivationSystem: cultivationSystem,
+                                enhancementSystem: null, // Will be added when enhancement system exists
+                                scriptureSystem: null // Will be added when scripture system exists
+                            });
 
-                        console.log('Sect Module initialized');
+                            // Initialize individual components
+                            await this.sectSystem.initialize();
+                            await this.sectManager.initialize();
+                            await this.sectActivities.initialize();
+                            await this.sectCompetition.initialize();
+
+                            console.log('Sect Module initialized');
+                        } catch (error) {
+                            console.error('Sect Module initialization failed:', error);
+                            // Don't throw - allow game to continue without sect system
+                        }
                     },
-                    update: (deltaTime) => {
+                    update: function(deltaTime) {
                         // Update sect systems
                         if (this.sectSystem) this.sectSystem.update(deltaTime);
                         if (this.sectActivities) this.sectActivities.update(deltaTime);
@@ -784,6 +799,7 @@ class IdleCultivationGame {
                         console.log('Sect Module shutting down');
                     }
                 };
+                return module; // CRITICAL FIX: Module must be returned
             },
             dependencies: ['cultivation'],
             priority: 65
