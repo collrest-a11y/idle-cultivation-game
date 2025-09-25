@@ -743,6 +743,13 @@
     <!-- Loading Progress Container -->
     <div id="loading-container"></div>
 
+    <!-- Performance Optimization Scripts - Issue #119 -->
+    <script src="js/core/LoadingSequenceOptimizer.js"></script>
+    <script src="js/core/ConsoleErrorSuppressor.js"></script>
+    <script src="js/core/DOMQueryOptimizer.js"></script>
+    <script src="js/core/RenderOptimizer.js"></script>
+    <script src="js/core/EnhancedPerformanceMonitor.js"></script>
+
     <!-- Core Game Engine -->
     <script src="js/core/EventManager.js"></script>
     <script src="js/core/ErrorManager.js"></script>
@@ -976,6 +983,39 @@
                 window.LoadingManager.hide();
             }
         }, 10000);
+
+        // Initialize Performance Optimizations - Issue #119
+        if (window.loadingSequenceOptimizer) {
+            window.loadingSequenceOptimizer.optimizeLoading();
+        }
+
+        if (window.enhancedPerformanceMonitor) {
+            console.log('✅ Enhanced performance monitoring active');
+        }
+
+        // Add performance report to window
+        window.getPerformanceReport = function() {
+            const reports = {};
+
+            if (window.enhancedPerformanceMonitor) {
+                reports.performance = window.enhancedPerformanceMonitor.getMetrics();
+            }
+
+            if (window.domQueryOptimizer) {
+                reports.domQueries = window.domQueryOptimizer.getStats();
+            }
+
+            if (window.consoleErrorSuppressor) {
+                reports.console = window.consoleErrorSuppressor.getStats();
+            }
+
+            if (window.renderOptimizer) {
+                reports.rendering = window.renderOptimizer.getStats();
+            }
+
+            console.log('📊 Performance Report:', reports);
+            return reports;
+        };
     </script>
 </body>
 </html>

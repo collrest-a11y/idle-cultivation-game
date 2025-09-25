@@ -1,0 +1,36 @@
+
+    <!-- Performance Optimization Scripts - Issue #119 -->
+    <script src="js/core/LoadingSequenceOptimizer.js"></script>
+    <script src="js/core/ConsoleErrorSuppressor.js"></script>
+    <script src="js/core/DOMQueryOptimizer.js"></script>
+    <script src="js/core/EnhancedPerformanceMonitor.js"></script>
+    <script>
+        // Initialize optimizations
+        if (window.loadingSequenceOptimizer) {
+            window.loadingSequenceOptimizer.optimizeLoading();
+        }
+
+        // Performance monitoring setup
+        if (window.enhancedPerformanceMonitor) {
+            console.log('✅ Enhanced performance monitoring active');
+        }
+
+        // Add performance report to window
+        window.getPerformanceReport = function() {
+            const reports = {};
+
+            if (window.enhancedPerformanceMonitor) {
+                reports.performance = window.enhancedPerformanceMonitor.getMetrics();
+            }
+
+            if (window.domQueryOptimizer) {
+                reports.domQueries = window.domQueryOptimizer.getStats();
+            }
+
+            if (window.consoleErrorSuppressor) {
+                reports.console = window.consoleErrorSuppressor.getStats();
+            }
+
+            return reports;
+        };
+    </script>
