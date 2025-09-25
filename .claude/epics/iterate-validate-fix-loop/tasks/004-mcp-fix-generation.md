@@ -1,8 +1,8 @@
 ---
 name: MCP Integration for Automated Fix Generation
-status: open
+status: completed
 created: 2025-09-25T19:38:00Z
-updated: 2025-09-25T20:15:00Z
+updated: 2025-09-25T21:00:00Z
 github: https://github.com/collrest-a11y/idle-cultivation-game/issues/125
 priority: P1
 effort: 2d
