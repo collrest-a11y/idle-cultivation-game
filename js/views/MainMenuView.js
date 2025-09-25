@@ -584,19 +584,60 @@ class MainMenuView extends GameView {
      * Render view content
      */
     renderContent() {
-        this.renderPlayerStatus();
-        this.renderOverview();
-        this.renderNotifications();
-        this.updateSessionInfo();
+        // Check if player exists before rendering player-specific content
+        if (!this.playerData && window.game && window.game.gameState) {
+            // Try to get player data
+            this.playerData = window.game.gameState.get('player');
+        }
+
+        // Only render player-specific content if player exists
+        if (this.playerData) {
+            this.renderPlayerStatus();
+            this.renderOverview();
+            this.renderNotifications();
+            this.updateSessionInfo();
+        } else {
+            // Show character creation prompt if no player
+            this.showNoPlayerMessage();
+        }
+    }
+
+    /**
+     * Show message when no player exists
+     */
+    showNoPlayerMessage() {
+        if (this.element) {
+            this.element.innerHTML = `
+                <div class="no-player-message">
+                    <h2>Welcome to Idle Cultivation</h2>
+                    <p>Please create a character to begin your journey.</p>
+                    <button id="start-character-creation" class="btn-primary">Create Character</button>
+                </div>
+            `;
+
+            // Add click handler for character creation
+            const button = this.element.querySelector('#start-character-creation');
+            if (button) {
+                button.addEventListener('click', () => {
+                    // Trigger character creation
+                    if (window.viewManager) {
+                        window.viewManager.switchTo('character-creation');
+                    } else if (window.characterCreation) {
+                        window.characterCreation.showModal();
+                    }
+                });
+            }
+        }
     }
 
     /**
      * Render player status
      */
     renderPlayerStatus() {
-        if (!this.playerData) return;
+        if (!this.playerData || !this.playerStatusPanel) return;
 
         const statusContent = this.playerStatusPanel.querySelector('.player-status-content');
+        if (!statusContent) return;
         const playerInfo = statusContent.querySelector('.player-info');
         const cultivationProgress = statusContent.querySelector('.cultivation-progress');
         const resourceDisplay = statusContent.querySelector('.resource-display');
@@ -664,9 +705,10 @@ class MainMenuView extends GameView {
      * Render overview
      */
     renderOverview() {
-        if (!this.gameProgress) return;
+        if (!this.gameProgress || !this.overviewPanel) return;
 
         const overviewContent = this.overviewPanel.querySelector('.overview-content');
+        if (!overviewContent) return;
         const progressSummary = overviewContent.querySelector('.progress-summary');
         const activitiesList = overviewContent.querySelector('.activities-list');
 
