@@ -5,10 +5,16 @@
 import { ErrorDetector } from './error-detector.js';
 import { ErrorAggregator } from './error-aggregator.js';
 import { ErrorReporter } from './error-reporter.js';
+import { FunctionalErrorDetector } from './functional-error-detector.js';
+import { UIErrorDetector } from './ui-error-detector.js';
+import { StateValidator } from './state-validator.js';
 
 export class ErrorDetectionRunner {
   constructor() {
     this.errorDetector = new ErrorDetector();
+    this.functionalDetector = new FunctionalErrorDetector();
+    this.uiDetector = new UIErrorDetector();
+    this.stateValidator = new StateValidator();
     this.errorAggregator = new ErrorAggregator();
     this.errorReporter = new ErrorReporter();
   }
@@ -23,17 +29,31 @@ export class ErrorDetectionRunner {
 
       console.log('[ErrorDetectionRunner] Error detection systems initialized');
 
-      // Run character creation test (this would catch the bug)
+      // Navigate to the page first
+      await page.goto('file://' + process.cwd().replace(/\\/g, '/') + '/index.html');
+      await page.waitForTimeout(2000);
+
+      // Run functional error detection (this will catch the Begin button bug)
+      console.log('[ErrorDetectionRunner] Running functional error detection...');
+      const functionalErrors = await this.functionalDetector.detectAllErrors(page);
+      console.log(`[ErrorDetectionRunner] Functional detection found ${functionalErrors.length} errors`);
+
+      // Run UI error detection
+      console.log('[ErrorDetectionRunner] Running UI error detection...');
+      const uiErrors = await this.uiDetector.detectUIErrors(page);
+      console.log(`[ErrorDetectionRunner] UI detection found ${uiErrors.length} errors`);
+
+      // Run state validation
+      console.log('[ErrorDetectionRunner] Running state validation...');
+      const stateErrors = await this.stateValidator.validateGameState(page);
+      console.log(`[ErrorDetectionRunner] State validation found ${stateErrors.length} errors`);
+
+      // Run legacy tests for backward compatibility
       const characterCreationErrors = await this.testCharacterCreation(page);
       console.log(`[ErrorDetectionRunner] Character creation test found ${characterCreationErrors.length} errors`);
 
-      // Run save/load test
       const saveLoadErrors = await this.testSaveLoad(page);
       console.log(`[ErrorDetectionRunner] Save/load test found ${saveLoadErrors.length} errors`);
-
-      // Run UI validation test
-      const uiErrors = await this.testUIValidation(page);
-      console.log(`[ErrorDetectionRunner] UI validation test found ${uiErrors.length} errors`);
 
       // Wait for async error detection to complete
       await this.waitForErrorDetection(5000);
@@ -52,9 +72,11 @@ export class ErrorDetectionRunner {
         summary: summaryReport,
         detailed: report,
         technical: technicalReport,
+        functionalErrors,
+        uiErrors,
+        stateErrors,
         characterCreationErrors,
-        saveLoadErrors,
-        uiErrors
+        saveLoadErrors
       };
 
     } finally {
@@ -64,13 +86,11 @@ export class ErrorDetectionRunner {
   }
 
   async testCharacterCreation(page) {
-    console.log('[ErrorDetectionRunner] Testing character creation flow...');
+    console.log('[ErrorDetectionRunner] Testing character creation flow (legacy test)...');
     const errors = [];
 
     try {
-      // Navigate to the page
-      await page.goto('file://' + process.cwd().replace(/\\/g, '/') + '/index.html');
-      await page.waitForTimeout(2000);
+      // Page already navigated in main function
 
       // Start character creation
       const startButton = page.locator('#start-character-creation');
@@ -386,7 +406,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.log(`Total errors found: ${results.detailed.summary.total}`);
       console.log(`Critical errors: ${results.detailed.summary.bySeverity.CRITICAL}`);
       console.log(`High severity errors: ${results.detailed.summary.bySeverity.HIGH}`);
-      console.log(`Character creation errors: ${results.characterCreationErrors.length}`);
+      console.log(`Functional errors: ${results.functionalErrors.length}`);
+      console.log(`UI errors: ${results.uiErrors.length}`);
+      console.log(`State validation errors: ${results.stateErrors.length}`);
+      console.log(`Character creation errors (legacy): ${results.characterCreationErrors.length}`);
 
       if (results.detailed.recommendations.length > 0) {
         console.log('\nRecommendations:');
