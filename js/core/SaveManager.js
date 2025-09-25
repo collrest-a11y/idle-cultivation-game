@@ -485,6 +485,13 @@ class SaveManager {
 
         // Validate data before saving if validator is available
         if (config.validate && typeof window !== 'undefined' && window.dataValidator) {
+            // Skip validation if no character exists yet (pre-game state)
+            const hasCharacter = data && (data.player || data.character || data.characterCreated);
+            if (!hasCharacter) {
+                console.log('SaveManager: Skipping validation - no character created yet');
+                return true; // Don't save pre-character state
+            }
+
             const validation = window.dataValidator.validateGameState(data, { sanitize: false });
             if (!validation.isValid) {
                 console.error('SaveManager: Cannot save invalid data:', validation.errors);
