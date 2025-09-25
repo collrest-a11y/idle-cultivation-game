@@ -38,7 +38,9 @@
       "Read(//c/Users/Brendan/Documents/GitHub/epic-Fix-Game/.claude/epics/Fix-Game/**)",
       "WebSearch",
       "WebFetch(domain:docs.google.com)",
-      "Read(//c/Users/Brendan/Documents/GitHub/epic-Fix-Game/**)"
+      "Read(//c/Users/Brendan/Documents/GitHub/epic-Fix-Game/**)",
+      "Bash(cat:*)",
+      "Bash(npm test)"
     ],
     "deny": [],
     "ask": []

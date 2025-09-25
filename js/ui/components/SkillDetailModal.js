@@ -4,7 +4,7 @@
  */
 class SkillDetailModal extends BaseComponent {
     constructor(container, eventManager, skillSystem) {
-        super('skill-detail-modal', container);
+        super(container, { id: 'skill-detail-modal', eventManager, skillSystem });
 
         this.eventManager = eventManager;
         this.skillSystem = skillSystem;
@@ -52,11 +52,31 @@ class SkillDetailModal extends BaseComponent {
     }
 
     /**
+     * Create the component's DOM element (required by BaseComponent)
+     */
+    createElement() {
+        // Create container element
+        this.element = document.createElement('div');
+        this.element.className = 'skill-detail-modal-component';
+        this.element.id = 'skill-detail-modal-component';
+    }
+
+    /**
+     * Render the component (required by BaseComponent)
+     */
+    render() {
+        if (this.element) {
+            this._createModalStructure();
+        }
+    }
+
+    /**
      * Initialize the modal
      */
     async initialize() {
         try {
-            await super.initialize();
+            // Don't call super.initialize() as it expects different behavior
+            this.isInitialized = false;
 
             // Create modal structure
             this._createModalStructure();
@@ -67,6 +87,7 @@ class SkillDetailModal extends BaseComponent {
             // Set up accessibility
             this._setupAccessibility();
 
+            this.isInitialized = true;
             console.log('SkillDetailModal: Initialization complete');
 
         } catch (error) {

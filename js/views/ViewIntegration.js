@@ -239,11 +239,16 @@ class ViewIntegration {
             // Check if character already exists with error handling
             let hasCharacter = false;
             try {
-                hasCharacter = window.gameState?.get('player.character.created') || false;
+                // Check multiple sources for character existence
+                hasCharacter = window.gameState?.get('player.character.created') ||
+                              localStorage.getItem('idleCultivation_hasCharacter') === 'true' ||
+                              false;
             } catch (error) {
                 console.warn('ViewIntegration: Error checking character existence, assuming no character:', error);
                 hasCharacter = false;
             }
+
+            console.log('ViewIntegration: Character exists:', hasCharacter);
 
             if (hasCharacter) {
                 this.showGameInterface();

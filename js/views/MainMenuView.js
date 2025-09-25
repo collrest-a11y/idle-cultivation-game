@@ -21,7 +21,10 @@ class MainMenuView extends GameView {
 
         // Settings
         this.autoRefresh = true;
-        this.refreshRate = 2000; // 2 seconds for real-time updates
+        this.refreshRate = 10000; // 10 seconds - reduced for better performance
+        this.lastDataHash = null; // Track data changes
+        this.refreshCount = 0;
+        this.maxRefreshesPerMinute = 6; // Limit refresh rate
     }
 
     /**
@@ -584,6 +587,14 @@ class MainMenuView extends GameView {
      * Render view content
      */
     renderContent() {
+        // Check if data has actually changed
+        const currentDataHash = this.calculateDataHash();
+        if (currentDataHash === this.lastDataHash && this.refreshCount > 1) {
+            // No changes, skip render
+            return;
+        }
+        this.lastDataHash = currentDataHash;
+
         // Check if player exists before rendering player-specific content
         if (!this.playerData && window.game && window.game.gameState) {
             // Try to get player data
@@ -600,6 +611,19 @@ class MainMenuView extends GameView {
             // Show character creation prompt if no player
             this.showNoPlayerMessage();
         }
+    }
+
+    /**
+     * Calculate a hash of current data for change detection
+     */
+    calculateDataHash() {
+        const data = {
+            player: this.playerData?.level || 0,
+            resources: this.playerData?.resources || {},
+            notifications: this.notifications?.length || 0,
+            progress: this.gameProgress?.completion || 0
+        };
+        return JSON.stringify(data);
     }
 
     /**

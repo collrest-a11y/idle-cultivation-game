@@ -73,7 +73,8 @@
      * Handle fragment button click
      */
     function handleFragmentClick(button) {
-        const category = button.closest('.fragment-choices')?.dataset.category;
+        const categoryContainer = button.closest('.fragment-choices');
+        const category = categoryContainer?.dataset.category;
         const choice = button.dataset.choice;
 
         console.log(`[CharacterCreation] Fragment clicked - Category: ${category}, Choice: ${choice}`);
@@ -84,20 +85,25 @@
         }
 
         // Remove active/selected class from all buttons in same category
-        const categoryContainer = button.closest('.fragment-choices');
-        categoryContainer.querySelectorAll('.fragment-choice').forEach(btn => {
-            btn.classList.remove('active', 'selected');
-        });
+        if (categoryContainer) {
+            categoryContainer.querySelectorAll('.fragment-choice').forEach(btn => {
+                btn.classList.remove('active', 'selected');
+            });
+        }
 
         // Add active and selected class to clicked button
         button.classList.add('active', 'selected');
 
-        // Update state
+        // Update state directly
         characterState[category] = choice;
         console.log('[CharacterCreation] State updated:', characterState);
 
-        // Immediately check if we should enable begin button
-        updateBeginButton();
+        // Force update the begin button immediately
+        setTimeout(() => {
+            updateBeginButton();
+            // Double-check after a small delay
+            setTimeout(updateBeginButton, 100);
+        }, 10);
     }
 
     /**
@@ -134,9 +140,23 @@
         // Save to localStorage as fallback
         try {
             localStorage.setItem('characterChoices', JSON.stringify(characterState));
+            localStorage.setItem('idleCultivation_hasCharacter', 'true');
             console.log('[CharacterCreation] Character data saved to localStorage');
         } catch (err) {
             console.error('[CharacterCreation] Failed to save to localStorage:', err);
+        }
+
+        // Initialize player data in gameState if available
+        if (window.gameState && typeof window.gameState.set === 'function') {
+            window.gameState.set('player.character', {
+                created: true,
+                origin: characterState.origin,
+                vow: characterState.vow,
+                mark: characterState.mark,
+                name: characterState.origin,
+                level: 1
+            });
+            console.log('[CharacterCreation] Game state initialized with character data');
         }
 
         // Emit event if eventManager is available
@@ -159,8 +179,11 @@
      * Transition from character creation to game interface
      */
     function transitionToGame() {
+        console.log('[CharacterCreation] Starting transition to game interface');
+
         const characterCreation = document.getElementById('character-creation');
         const gameInterface = document.getElementById('game-interface');
+        const gameView = document.getElementById('game-view');
 
         if (characterCreation) {
             characterCreation.style.display = 'none';
@@ -174,10 +197,34 @@
             console.log('[CharacterCreation] Game interface shown');
         }
 
+        // Also show the game view if it exists
+        if (gameView) {
+            gameView.classList.remove('hidden');
+            gameView.style.display = 'block';
+            console.log('[CharacterCreation] Game view shown');
+        }
+
+        // Initialize ViewManager if available
+        if (window.viewManager && typeof window.viewManager.navigateTo === 'function') {
+            console.log('[CharacterCreation] Navigating to main-menu view');
+            window.viewManager.navigateTo('main-menu').catch(err => {
+                console.error('[CharacterCreation] Failed to navigate to main-menu:', err);
+            });
+        }
+
+        // Update game state if available
+        if (window.gameState && typeof window.gameState.set === 'function') {
+            window.gameState.set('player.character.created', true);
+            console.log('[CharacterCreation] Game state updated');
+        }
+
         // Hide loading screen if still visible
         if (window.LoadingManager && typeof window.LoadingManager.hide === 'function') {
             window.LoadingManager.hide();
         }
+
+        // Force page title update
+        document.title = 'Game - Idle Cultivation';
     }
 
     /**
@@ -185,18 +232,35 @@
      */
     function updateBeginButton() {
         const beginBtn = document.getElementById('begin-cultivation');
-        if (!beginBtn) return;
+        if (!beginBtn) {
+            console.warn('[CharacterCreation] Begin button not found');
+            return;
+        }
 
-        const allSelected = characterState.origin && characterState.vow && characterState.mark;
+        const allSelected = !!(characterState.origin && characterState.vow && characterState.mark);
 
-        if (allSelected && beginBtn.disabled) {
+        console.log('[CharacterCreation] Checking button state:', {
+            origin: characterState.origin,
+            vow: characterState.vow,
+            mark: characterState.mark,
+            allSelected,
+            currentlyDisabled: beginBtn.disabled
+        });
+
+        if (allSelected) {
             beginBtn.disabled = false;
             beginBtn.classList.add('enabled');
-            console.log('[CharacterCreation] Begin button enabled');
-        } else if (!allSelected && !beginBtn.disabled) {
+            beginBtn.classList.remove('disabled');
+            beginBtn.style.opacity = '1';
+            beginBtn.style.cursor = 'pointer';
+            console.log('[CharacterCreation] Begin button ENABLED');
+        } else {
             beginBtn.disabled = true;
             beginBtn.classList.remove('enabled');
-            console.log('[CharacterCreation] Begin button disabled');
+            beginBtn.classList.add('disabled');
+            beginBtn.style.opacity = '0.5';
+            beginBtn.style.cursor = 'not-allowed';
+            console.log('[CharacterCreation] Begin button DISABLED');
         }
     }
 
@@ -210,22 +274,31 @@
 
         setInterval(() => {
             // Check active/selected buttons and update state
-            const originActive = document.querySelector('[data-category="origin"] .fragment-choice.active, [data-category="origin"] .fragment-choice.selected');
-            const vowActive = document.querySelector('[data-category="vow"] .fragment-choice.active, [data-category="vow"] .fragment-choice.selected');
-            const markActive = document.querySelector('[data-category="mark"] .fragment-choice.active, [data-category="mark"] .fragment-choice.selected');
+            const originContainer = document.querySelector('.fragment-choices[data-category="origin"]');
+            const vowContainer = document.querySelector('.fragment-choices[data-category="vow"]');
+            const markContainer = document.querySelector('.fragment-choices[data-category="mark"]');
+
+            const originActive = originContainer ?
+                originContainer.querySelector('.fragment-choice.active, .fragment-choice.selected') : null;
+            const vowActive = vowContainer ?
+                vowContainer.querySelector('.fragment-choice.active, .fragment-choice.selected') : null;
+            const markActive = markContainer ?
+                markContainer.querySelector('.fragment-choice.active, .fragment-choice.selected') : null;
 
             // Update state based on active buttons
             const newState = {
-                origin: originActive ? originActive.dataset.choice : null,
-                vow: vowActive ? vowActive.dataset.choice : null,
-                mark: markActive ? markActive.dataset.choice : null
+                origin: originActive ? originActive.dataset.choice : characterState.origin,
+                vow: vowActive ? vowActive.dataset.choice : characterState.vow,
+                mark: markActive ? markActive.dataset.choice : characterState.mark
             };
+
+            // Always update button state to ensure it's correct
+            updateBeginButton();
 
             // Only log if state changed
             if (JSON.stringify(newState) !== JSON.stringify(characterState)) {
                 Object.assign(characterState, newState);
                 console.log('[CharacterCreation] State updated via polling:', characterState);
-                updateBeginButton();
             }
         }, 100); // Poll every 100ms
     }

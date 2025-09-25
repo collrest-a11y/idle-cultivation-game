@@ -645,39 +645,78 @@ class IdleCultivationGame {
                         }
                     },
                     async _initializeSkillsUI(context) {
+                        let uiInitialized = false;
+
                         try {
-                            // Initialize skill tree component
-                            const skillsInterface = document.getElementById('skills-interface');
-                            if (skillsInterface) {
-                                module.skillTreeComponent = new SkillTreeComponent(
-                                    skillsInterface,
-                                    context.eventManager,
-                                    module.skillIntegration.getSkillSystem()
-                                );
-                                await module.skillTreeComponent.initialize();
+                            // Validate prerequisites
+                            if (!context.eventManager) {
+                                console.warn('Skills UI: EventManager not available, skipping UI initialization');
+                                return;
                             }
 
-                            // Initialize skill detail modal
-                            const modalContainer = document.createElement('div');
-                            modalContainer.id = 'skill-detail-modal-container';
-                            document.body.appendChild(modalContainer);
+                            if (!module.skillIntegration?.getSkillSystem) {
+                                console.warn('Skills UI: SkillSystem not available, skipping UI initialization');
+                                return;
+                            }
 
-                            module.skillDetailModal = new SkillDetailModal(
-                                modalContainer,
-                                context.eventManager,
-                                module.skillIntegration.getSkillSystem()
-                            );
-                            await module.skillDetailModal.initialize();
+                            // Initialize skill tree component with error handling
+                            const skillsInterface = document.getElementById('skills-interface');
+                            if (skillsInterface && typeof SkillTreeComponent !== 'undefined') {
+                                try {
+                                    module.skillTreeComponent = new SkillTreeComponent(
+                                        skillsInterface,
+                                        context.eventManager,
+                                        module.skillIntegration.getSkillSystem()
+                                    );
+                                    await module.skillTreeComponent.initialize();
+                                    uiInitialized = true;
+                                } catch (treeError) {
+                                    console.warn('Skills UI: SkillTreeComponent initialization failed, continuing without it:', treeError.message);
+                                    module.skillTreeComponent = null;
+                                }
+                            } else {
+                                console.log('Skills UI: Skills interface element not found or SkillTreeComponent not loaded');
+                            }
 
-                            // Set up cross-component communication
-                            context.eventManager.on('skillTree:skillSelected', (data) => {
-                                module.skillDetailModal.show(data.skillId);
-                            });
+                            // Initialize skill detail modal with error handling
+                            if (typeof SkillDetailModal !== 'undefined') {
+                                try {
+                                    const modalContainer = document.createElement('div');
+                                    modalContainer.id = 'skill-detail-modal-container';
+                                    modalContainer.style.display = 'none';
+                                    document.body.appendChild(modalContainer);
 
-                            console.log('Skills UI components initialized');
+                                    module.skillDetailModal = new SkillDetailModal(
+                                        modalContainer,
+                                        context.eventManager,
+                                        module.skillIntegration.getSkillSystem()
+                                    );
+                                    await module.skillDetailModal.initialize();
+                                    uiInitialized = true;
+
+                                    // Set up cross-component communication
+                                    context.eventManager.on('skillTree:skillSelected', (data) => {
+                                        if (module.skillDetailModal && module.skillDetailModal.show) {
+                                            module.skillDetailModal.show(data.skillId);
+                                        }
+                                    });
+                                } catch (modalError) {
+                                    console.warn('Skills UI: SkillDetailModal initialization failed, continuing without it:', modalError.message);
+                                    module.skillDetailModal = null;
+                                }
+                            } else {
+                                console.log('Skills UI: SkillDetailModal class not loaded');
+                            }
+
+                            if (uiInitialized) {
+                                console.log('Skills UI: Components initialized successfully');
+                            } else {
+                                console.log('Skills UI: No UI components were initialized (non-critical)');
+                            }
 
                         } catch (error) {
-                            console.error('Skills Module: UI initialization failed:', error);
+                            // Non-critical error - skills backend still works
+                            console.warn('Skills UI: Initialization completed with warnings:', error.message);
                         }
                     }
                 };
