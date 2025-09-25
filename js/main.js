@@ -438,11 +438,11 @@ class IdleCultivationGame {
                     console.error(errorMsg);
 
                     if (this.errorManager) {
-                        this.errorManager.handleError(new Error(errorMsg), {
+                        this.errorManager.reportCriticalError(new Error(errorMsg), {
                             context: 'Module Loading',
                             failedModules: failedCritical,
                             loadResults
-                        }, 'critical');
+                        });
                     }
 
                     throw new Error(errorMsg);
@@ -455,7 +455,7 @@ class IdleCultivationGame {
             console.error('Module loading failed:', error);
 
             if (this.errorManager) {
-                this.errorManager.handleError(error, {
+                this.errorManager.reportError(error, {
                     context: 'Module Loading',
                     phase: 'module_load'
                 }, 'critical');
@@ -522,6 +522,7 @@ class IdleCultivationGame {
 
         // UI Module - handles all UI updates and interactions
         this.moduleManager.registerModule('ui', {
+            priority: 100,  // Critical module
             factory: async (context) => {
                 const module = {
                     name: 'UI Module',
@@ -566,11 +567,12 @@ class IdleCultivationGame {
 
         // Cultivation Module - handles cultivation mechanics
         this.moduleManager.registerModule('cultivation', {
+            priority: 90,  // Critical module
             factory: async (context) => {
-                return {
+                const module = {
                     name: 'Cultivation Module',
                     cultivationIntegration: null,
-                    init: async () => {
+                    init: async function() {
                         console.log('Cultivation Module initializing...');
 
                         // Get the cultivation integration instance
@@ -581,16 +583,17 @@ class IdleCultivationGame {
 
                         console.log('Cultivation Module initialized');
                     },
-                    update: (deltaTime) => {
+                    update: function(deltaTime) {
                         // Cultivation system updates itself via integration
                         // This space could be used for additional cultivation-related updates
                     },
-                    shutdown: () => {
+                    shutdown: function() {
                         if (this.cultivationIntegration) {
                             this.cultivationIntegration.shutdown();
                         }
                     }
                 };
+                return module;
             },
             dependencies: [],
             priority: 90
@@ -598,6 +601,7 @@ class IdleCultivationGame {
 
         // Skills Module - handles skill system mechanics
         this.moduleManager.registerModule('skills', {
+            priority: 85,  // UI module
             factory: async (context) => {
                 const module = {
                     name: 'Skills Module',
@@ -684,7 +688,7 @@ class IdleCultivationGame {
         });
 
         // Combat Module - handles combat mechanics
-        this.moduleManager.registerModule('combat', {
+        this.moduleManager.registerModule('combat', { priority: 80,
             factory: async (context) => {
                 return {
                     name: 'Combat Module',
@@ -703,6 +707,7 @@ class IdleCultivationGame {
 
         // Gacha Module - handles scripture gacha system
         this.moduleManager.registerModule('gacha', {
+            priority: 70,
             factory: async (context) => {
                 return {
                     name: 'Gacha Module',
@@ -721,6 +726,7 @@ class IdleCultivationGame {
 
         // Sect Module - handles sect system mechanics
         this.moduleManager.registerModule('sect', {
+            priority: 65,
             factory: async (context) => {
                 return {
                     name: 'Sect Module',
@@ -785,6 +791,7 @@ class IdleCultivationGame {
 
         // Save Module - handles auto-saving
         this.moduleManager.registerModule('save', {
+            priority: 60,
             factory: async (context) => {
                 return {
                     name: 'Save Module',

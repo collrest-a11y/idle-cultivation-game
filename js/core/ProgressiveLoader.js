@@ -121,7 +121,9 @@ class ProgressiveLoader {
 
         // Classify each module into a phase
         for (const [moduleName, moduleData] of modules.entries()) {
-            const phase = this.classifyModule(moduleName, moduleData.priority);
+            // Handle both direct priority and config.priority
+            const priority = moduleData.priority || (moduleData.config && moduleData.config.priority) || 50;
+            const phase = this.classifyModule(moduleName, priority);
             this.phaseConfig[phase].modules.push(moduleName);
         }
 

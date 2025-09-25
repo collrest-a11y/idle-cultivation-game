@@ -192,7 +192,16 @@ class LoadingProgress {
     _createPhaseIndicators(phases) {
         this.phaseList.innerHTML = '';
 
+        if (!phases || typeof phases !== 'object') {
+            console.warn('LoadingProgress: Invalid phases data', phases);
+            return;
+        }
+
         Object.entries(phases).forEach(([phaseKey, phaseConfig]) => {
+            if (!phaseConfig || !phaseConfig.name) {
+                console.warn(`LoadingProgress: Invalid phase config for ${phaseKey}`, phaseConfig);
+                return;
+            }
             const phaseItem = document.createElement('div');
             phaseItem.className = 'phase-item';
             phaseItem.dataset.phase = phaseKey;
