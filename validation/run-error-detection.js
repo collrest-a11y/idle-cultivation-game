@@ -8,6 +8,9 @@ import { ErrorReporter } from './error-reporter.js';
 import { FunctionalErrorDetector } from './functional-error-detector.js';
 import { UIErrorDetector } from './ui-error-detector.js';
 import { StateValidator } from './state-validator.js';
+import { PerformanceMonitor } from './performance-monitor.js';
+import { NetworkMonitor } from './network-monitor.js';
+import { MemoryTracker } from './memory-tracker.js';
 
 export class ErrorDetectionRunner {
   constructor() {
@@ -15,6 +18,9 @@ export class ErrorDetectionRunner {
     this.functionalDetector = new FunctionalErrorDetector();
     this.uiDetector = new UIErrorDetector();
     this.stateValidator = new StateValidator();
+    this.performanceMonitor = new PerformanceMonitor();
+    this.networkMonitor = new NetworkMonitor();
+    this.memoryTracker = new MemoryTracker();
     this.errorAggregator = new ErrorAggregator();
     this.errorReporter = new ErrorReporter();
   }
@@ -23,11 +29,19 @@ export class ErrorDetectionRunner {
     console.log('[ErrorDetectionRunner] Starting comprehensive error detection...');
 
     try {
-      // Initialize error detector
+      // Initialize all detectors
       await this.errorDetector.initialize(page);
+      await this.performanceMonitor.initialize(page);
+      await this.networkMonitor.initialize(page);
+      await this.memoryTracker.initialize(page);
+
+      // Add detectors to aggregator
       this.errorAggregator.addDetector(this.errorDetector);
 
-      console.log('[ErrorDetectionRunner] Error detection systems initialized');
+      // Set up cross-monitoring integration
+      this.setupMonitoringIntegration();
+
+      console.log('[ErrorDetectionRunner] All error detection and monitoring systems initialized');
 
       // Navigate to the page first
       await page.goto('file://' + process.cwd().replace(/\\/g, '/') + '/index.html');
@@ -55,8 +69,23 @@ export class ErrorDetectionRunner {
       const saveLoadErrors = await this.testSaveLoad(page);
       console.log(`[ErrorDetectionRunner] Save/load test found ${saveLoadErrors.length} errors`);
 
-      // Wait for async error detection to complete
-      await this.waitForErrorDetection(5000);
+      // Wait for async error detection and performance monitoring
+      await this.waitForErrorDetection(10000); // Extended time for performance monitoring
+
+      // Collect performance and network monitoring data
+      console.log('[ErrorDetectionRunner] Collecting performance and network monitoring data...');
+      const performanceErrors = this.performanceMonitor.getErrors();
+      const networkErrors = this.networkMonitor.getErrors();
+      const memoryErrors = this.memoryTracker.getErrors();
+
+      console.log(`[ErrorDetectionRunner] Performance errors found: ${performanceErrors.length}`);
+      console.log(`[ErrorDetectionRunner] Network errors found: ${networkErrors.length}`);
+      console.log(`[ErrorDetectionRunner] Memory errors found: ${memoryErrors.length}`);
+
+      // Get monitoring summaries
+      const performanceSummary = this.performanceMonitor.getSummary();
+      const networkSummary = this.networkMonitor.getSummary();
+      const memorySummary = this.memoryTracker.getSummary();
 
       // Collect all detected errors
       const allErrors = await this.errorAggregator.collectAllErrors();
@@ -76,13 +105,55 @@ export class ErrorDetectionRunner {
         uiErrors,
         stateErrors,
         characterCreationErrors,
-        saveLoadErrors
+        saveLoadErrors,
+        performanceErrors,
+        networkErrors,
+        memoryErrors,
+        monitoring: {
+          performance: performanceSummary,
+          network: networkSummary,
+          memory: memorySummary
+        }
       };
 
     } finally {
-      // Clean up
+      // Clean up all monitoring systems
       this.errorDetector.destroy();
+      this.performanceMonitor.destroy();
+      this.networkMonitor.destroy();
+      this.memoryTracker.destroy();
     }
+  }
+
+  /**
+   * Set up integration between different monitoring systems
+   */
+  setupMonitoringIntegration() {
+    // Forward performance monitoring errors to the main error detector
+    this.performanceMonitor.subscribe((error) => {
+      this.errorDetector.captureError({
+        ...error,
+        source: 'performance-monitor'
+      });
+    });
+
+    // Forward network monitoring errors to the main error detector
+    this.networkMonitor.subscribe((error) => {
+      this.errorDetector.captureError({
+        ...error,
+        source: 'network-monitor'
+      });
+    });
+
+    // Forward memory tracking errors to the main error detector
+    this.memoryTracker.subscribe((error) => {
+      this.errorDetector.captureError({
+        ...error,
+        source: 'memory-tracker'
+      });
+    });
+
+    console.log('[ErrorDetectionRunner] Monitoring integration set up - all errors will be aggregated');
   }
 
   async testCharacterCreation(page) {
@@ -410,6 +481,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.log(`UI errors: ${results.uiErrors.length}`);
       console.log(`State validation errors: ${results.stateErrors.length}`);
       console.log(`Character creation errors (legacy): ${results.characterCreationErrors.length}`);
+
+      console.log('\n=== PERFORMANCE & NETWORK MONITORING ===');
+      console.log(`Performance errors: ${results.performanceErrors.length}`);
+      console.log(`Network errors: ${results.networkErrors.length}`);
+      console.log(`Memory errors: ${results.memoryErrors.length}`);
+
+      if (results.monitoring.performance.currentMetrics) {
+        console.log(`Current FPS: ${results.monitoring.performance.currentMetrics.fps}`);
+        console.log(`Memory Usage: ${results.monitoring.performance.currentMetrics.memoryUsage}`);
+      }
+
+      if (results.monitoring.network.networkStats) {
+        console.log(`Network Error Rate: ${results.monitoring.network.networkStats.errorRate}`);
+        console.log(`Recent Requests: ${results.monitoring.network.networkStats.recentRequests}`);
+      }
 
       if (results.detailed.recommendations.length > 0) {
         console.log('\nRecommendations:');
