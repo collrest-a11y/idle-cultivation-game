@@ -160,7 +160,9 @@ class ProgressiveLoader {
             this.organizeModules(this.moduleManager.modules);
 
             // Load each phase in sequence
-            for (const phaseName of Object.keys(this.PHASES)) {
+            // CRITICAL FIX: Use Object.values to get phase values ('critical', 'ui', 'enhancement')
+            // not Object.keys which returns property names ('CRITICAL', 'UI', 'ENHANCEMENT')
+            for (const phaseName of Object.values(this.PHASES)) {
                 await this._loadPhase(phaseName);
             }
 
