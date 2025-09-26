@@ -1,12 +1,15 @@
 /**
  * Playwright E2E Testing Configuration for Idle Cultivation Game
  * Tests end-to-end user workflows across all integrated systems
+ *
+ * Part of the Automated Validation & Fix Loop System (Epic #122-129)
+ * Configured for comprehensive browser testing to catch real bugs
  */
 
 const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
-  testDir: './testing/e2e',
+  testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

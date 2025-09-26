@@ -22,7 +22,9 @@ class GameView extends BaseComponent {
         // Data refresh settings
         this.autoRefresh = true;
         this.refreshInterval = null;
-        this.refreshRate = 5000; // 5 seconds default
+        this.refreshRate = 10000; // 10 seconds default
+        this.lastRefreshTime = 0;
+        this.minRefreshInterval = 5000; // Minimum 5 seconds between refreshes
 
         // UI elements
         this.header = null;
@@ -80,17 +82,24 @@ class GameView extends BaseComponent {
     createElement() {
         try {
             this.element = document.createElement('div');
-            this.element.className = `game-view view-${this.viewId}`;
-            this.element.setAttribute('data-view-id', this.viewId);
+
+            // Handle undefined viewId gracefully
+            const viewIdClass = this.viewId ? `view-${this.viewId}` : 'view-default';
+            this.element.className = `game-view ${viewIdClass}`;
+
+            if (this.viewId) {
+                this.element.setAttribute('data-view-id', this.viewId);
+            }
+
             this.element.setAttribute('role', 'main');
-            this.element.setAttribute('aria-label', this.config.title || 'Game View');
+            this.element.setAttribute('aria-label', this.config?.title || 'Game View');
 
             // Apply responsive and accessibility classes
-            if (this.options.responsive) {
+            if (this.options?.responsive) {
                 this.element.classList.add('responsive');
             }
 
-            if (this.options.accessible) {
+            if (this.options?.accessible) {
                 this.element.classList.add('accessible');
             }
 
@@ -100,7 +109,7 @@ class GameView extends BaseComponent {
             // Initially hidden
             this.element.style.display = 'none';
 
-            console.log(`GameView: Created element for view ${this.viewId}`);
+            console.log(`GameView: Created element for view ${this.viewId || 'default'}`);
         } catch (error) {
             this._handleViewError(error, 'createElement');
             // Create fallback element
@@ -138,11 +147,12 @@ class GameView extends BaseComponent {
             this.renderStats.errors++;
         }
 
-        console.error(`GameView[${this.viewId}]: Error in ${context}:`, error);
+        const viewIdDisplay = this.viewId || 'undefined';
+        console.error(`GameView[${viewIdDisplay}]: Error in ${context}:`, error);
 
         if (window.errorManager) {
             window.errorManager.reportError(error, {
-                component: `GameView[${this.viewId}]`,
+                component: `GameView[${viewIdDisplay}]`,
                 context,
                 viewActive: this.isActive,
                 errorCount: this.errorCount
@@ -160,12 +170,14 @@ class GameView extends BaseComponent {
      */
     _createFallbackElement() {
         try {
+            const viewIdDisplay = this.viewId || 'undefined';
+            const viewIdClass = this.viewId ? `view-${this.viewId}` : 'view-default';
             this.element = document.createElement('div');
-            this.element.className = `game-view view-${this.viewId} fallback-view`;
+            this.element.className = `game-view ${viewIdClass} fallback-view`;
             this.element.innerHTML = `
                 <div class="fallback-content">
                     <h2>View Error</h2>
-                    <p>There was an error loading the ${this.viewId} view.</p>
+                    <p>There was an error loading the ${viewIdDisplay} view.</p>
                     <button class="btn btn-primary retry-btn">Retry</button>
                 </div>
             `;
@@ -178,14 +190,15 @@ class GameView extends BaseComponent {
                         this.createElement();
                         this.render();
                     } catch (retryError) {
-                        console.error(`GameView[${this.viewId}]: Retry failed:`, retryError);
+                        console.error(`GameView[${viewIdDisplay}]: Retry failed:`, retryError);
                     }
                 });
             }
 
-            console.log(`GameView: Created fallback element for view ${this.viewId}`);
+            console.log(`GameView: Created fallback element for view ${viewIdDisplay}`);
         } catch (fallbackError) {
-            console.error(`GameView[${this.viewId}]: Failed to create fallback element:`, fallbackError);
+            const viewIdDisplay = this.viewId || 'undefined';
+            console.error(`GameView[${viewIdDisplay}]: Failed to create fallback element:`, fallbackError);
             // Ultimate fallback
             this.element = document.createElement('div');
             this.element.className = 'game-view error-view';

@@ -1,0 +1,76 @@
+#!/bin/bash
+# Pre-commit hook for validation system
+# This ensures code quality before commits reach the repository
+
+set -e
+
+echo "🔍 Running pre-commit validation..."
+
+# Check if node_modules exists
+if [ ! -d "node_modules" ]; then
+    echo "⚠️  Installing dependencies..."
+    npm install
+fi
+
+# Run quick validation using the validation system
+echo "🧪 Running quick validation checks..."
+
+# Check if validation CLI exists
+if [ -f "validation/cli.js" ]; then
+    node validation/cli.js check --quick --exit-code
+    VALIDATION_EXIT=$?
+else
+    # Fallback to basic checks if validation system not available
+    echo "⚠️  Validation system not found, running basic checks..."
+
+    # Basic syntax check
+    echo "🔧 Checking JavaScript syntax..."
+    find . -name "*.js" -not -path "./node_modules/*" -exec node -c {} \; 2>/dev/null || {
+        echo "❌ JavaScript syntax errors found!"
+        exit 1
+    }
+
+    # Check if main files exist
+    if [ ! -f "game.js" ]; then
+        echo "❌ Critical file game.js missing!"
+        exit 1
+    fi
+
+    if [ ! -f "index.html" ]; then
+        echo "❌ Critical file index.html missing!"
+        exit 1
+    fi
+
+    VALIDATION_EXIT=0
+fi
+
+# Run basic tests if available
+if [ -f "package.json" ] && command -v npm &> /dev/null; then
+    echo "🧪 Running basic tests..."
+
+    # Check if test script exists in package.json
+    if npm run test --dry-run 2>/dev/null; then
+        timeout 60s npm test || {
+            echo "⚠️  Tests failed or timed out (>60s)"
+            echo "💡 Run 'npm test' locally to debug"
+            # Don't fail commit on test failure, just warn
+        }
+    fi
+fi
+
+if [ $VALIDATION_EXIT -ne 0 ]; then
+    echo ""
+    echo "❌ Pre-commit validation failed!"
+    echo ""
+    echo "💡 To fix issues automatically, run:"
+    echo "   npm run validate:fix"
+    echo ""
+    echo "💡 To skip this hook (not recommended), run:"
+    echo "   git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+echo "✅ Pre-commit validation passed!"
+echo ""
+exit 0

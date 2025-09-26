@@ -1,0 +1,96 @@
+# Docker Compose for Validation Environment
+# Provides easy setup for local validation testing
+
+version: '3.8'
+
+services:
+  # Main validation service
+  validation:
+    build:
+      context: ../../..
+      dockerfile: validation/cicd/docker/Dockerfile
+    container_name: idle-cultivation-validation
+    environment:
+      - NODE_ENV=test
+      - CI=true
+      - VALIDATION_TIMEOUT=1800000
+      - MAX_FIX_ITERATIONS=5
+      - FIX_CONFIDENCE_THRESHOLD=80
+    volumes:
+      - ../../../validation-reports:/app/validation-reports
+      - ../../../test-results:/app/test-results
+      - ../../../playwright-report:/app/playwright-report
+    networks:
+      - validation-network
+    depends_on:
+      - test-server
+    command: npm run ci:validate
+
+  # Test server for E2E validation
+  test-server:
+    build:
+      context: ../../..
+      dockerfile: validation/cicd/docker/Dockerfile
+    container_name: idle-cultivation-test-server
+    environment:
+      - NODE_ENV=test
+    volumes:
+      - ../../..:/app:ro
+    networks:
+      - validation-network
+    ports:
+      - "8080:8080"
+    command: python3 -m http.server 8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Performance monitoring
+  performance:
+    build:
+      context: ../../..
+      dockerfile: validation/cicd/docker/Dockerfile
+    container_name: idle-cultivation-performance
+    environment:
+      - NODE_ENV=test
+      - CI=true
+      - PERFORMANCE_MONITORING=true
+    volumes:
+      - ../../../performance-reports:/app/performance-reports
+    networks:
+      - validation-network
+    depends_on:
+      - test-server
+    command: npm run ci:performance
+    profiles:
+      - performance
+
+  # Quick validation (for faster feedback)
+  quick-check:
+    build:
+      context: ../../..
+      dockerfile: validation/cicd/docker/Dockerfile
+    container_name: idle-cultivation-quick
+    environment:
+      - NODE_ENV=test
+      - CI=true
+    volumes:
+      - ../../../validation-reports:/app/validation-reports
+    networks:
+      - validation-network
+    command: npm run validate:quick
+    profiles:
+      - quick
+
+networks:
+  validation-network:
+    driver: bridge
+
+volumes:
+  validation-reports:
+  test-results:
+  playwright-report:
+  performance-reports:

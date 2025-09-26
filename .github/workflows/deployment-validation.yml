@@ -1,0 +1,539 @@
+# Deployment Validation Pipeline
+# Validates deployments and triggers rollback on failure
+
+name: Deployment Validation
+
+on:
+  workflow_run:
+    workflows: ["Deploy to Production", "production-deployment"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: 'URL to validate (defaults to production)'
+        required: false
+      timeout_minutes:
+        description: 'Validation timeout in minutes'
+        required: false
+        default: '10'
+      skip_rollback:
+        description: 'Skip automatic rollback on failure'
+        required: false
+        default: 'false'
+
+env:
+  NODE_VERSION: '18'
+  VALIDATION_TIMEOUT: ${{ github.event.inputs.timeout_minutes || '10' }}
+
+jobs:
+  post-deployment-validation:
+    name: Post-Deployment Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+
+    outputs:
+      validation_status: ${{ steps.validation.outputs.status }}
+      deployment_url: ${{ steps.setup.outputs.deployment_url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup deployment validation
+        id: setup
+        run: |
+          # Determine deployment URL
+          if [ -n "${{ github.event.inputs.deployment_url }}" ]; then
+            DEPLOYMENT_URL="${{ github.event.inputs.deployment_url }}"
+          elif [ -n "${{ secrets.PRODUCTION_URL }}" ]; then
+            DEPLOYMENT_URL="${{ secrets.PRODUCTION_URL }}"
+          else
+            DEPLOYMENT_URL="https://idle-cultivation-game.vercel.app"
+          fi
+
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "🌐 Validating deployment at: $DEPLOYMENT_URL"
+
+          # Install dependencies
+          npm ci --only=production
+          npx playwright install chromium --with-deps
+
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for deployment to be ready..."
+          DEPLOYMENT_URL="${{ steps.setup.outputs.deployment_url }}"
+
+          # Wait up to 5 minutes for deployment
+          for i in {1..60}; do
+            if curl -s -f --max-time 10 "$DEPLOYMENT_URL" > /dev/null 2>&1; then
+              echo "✅ Deployment is responding"
+              break
+            fi
+
+            if [ $i -eq 60 ]; then
+              echo "❌ Deployment not responding after 5 minutes"
+              exit 1
+            fi
+
+            echo "Waiting for deployment... ($i/60)"
+            sleep 5
+          done
+
+      - name: Run deployment validation
+        id: validation
+        env:
+          DEPLOYMENT_URL: ${{ steps.setup.outputs.deployment_url }}
+        run: |
+          echo "🔍 Running deployment validation..."
+
+          # Create validation report directory
+          mkdir -p deployment-reports
+
+          if [ -f "validation/cli.js" ]; then
+            echo "Using validation CLI for deployment check..."
+            timeout "${VALIDATION_TIMEOUT}m" node validation/cli.js validate-deployment \
+              --url "$DEPLOYMENT_URL" \
+              --timeout 60000 \
+              --output json \
+              --output-file deployment-reports/validation-report.json || {
+                echo "status=failed" >> $GITHUB_OUTPUT
+                echo "❌ Validation CLI failed"
+                exit 1
+              }
+          else
+            echo "Using built-in deployment validation..."
+
+            # Create basic deployment validation script
+            cat > validate-deployment.js << 'EOF'
+            const https = require('https');
+            const http = require('http');
+            const { URL } = require('url');
+
+            async function validateDeployment(url) {
+              const report = {
+                timestamp: new Date().toISOString(),
+                url: url,
+                status: 'success',
+                checks: []
+              };
+
+              try {
+                // Basic connectivity check
+                console.log('🔌 Testing connectivity...');
+                const response = await fetch(url, { timeout: 10000 });
+
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                report.checks.push({
+                  name: 'connectivity',
+                  status: 'passed',
+                  message: `HTTP ${response.status} - Site is reachable`
+                });
+
+                // Content validation
+                console.log('📄 Validating content...');
+                const content = await response.text();
+
+                if (content.length < 100) {
+                  throw new Error('Response too short, possible error page');
+                }
+
+                if (!content.includes('<html') && !content.includes('<!DOCTYPE')) {
+                  throw new Error('Response does not appear to be HTML');
+                }
+
+                report.checks.push({
+                  name: 'content',
+                  status: 'passed',
+                  message: 'Valid HTML content received'
+                });
+
+                // Game-specific checks
+                if (content.includes('game') || content.includes('Game') || content.includes('cultivation')) {
+                  report.checks.push({
+                    name: 'game_content',
+                    status: 'passed',
+                    message: 'Game-related content found'
+                  });
+                } else {
+                  report.checks.push({
+                    name: 'game_content',
+                    status: 'warning',
+                    message: 'No game-specific content detected'
+                  });
+                }
+
+                console.log('✅ Deployment validation passed');
+
+              } catch (error) {
+                report.status = 'failed';
+                report.error = error.message;
+                report.checks.push({
+                  name: 'deployment',
+                  status: 'failed',
+                  message: error.message
+                });
+
+                console.log('❌ Deployment validation failed:', error.message);
+                throw error;
+              }
+
+              return report;
+            }
+
+            // Fetch polyfill for Node.js < 18
+            if (!global.fetch) {
+              global.fetch = async (url, options = {}) => {
+                const { timeout = 10000 } = options;
+                const urlObj = new URL(url);
+                const client = urlObj.protocol === 'https:' ? https : http;
+
+                return new Promise((resolve, reject) => {
+                  const timer = setTimeout(() => {
+                    reject(new Error('Request timeout'));
+                  }, timeout);
+
+                  const req = client.get(url, (res) => {
+                    clearTimeout(timer);
+                    let data = '';
+
+                    res.on('data', chunk => data += chunk);
+                    res.on('end', () => {
+                      resolve({
+                        ok: res.statusCode >= 200 && res.statusCode < 300,
+                        status: res.statusCode,
+                        statusText: res.statusMessage,
+                        text: () => Promise.resolve(data)
+                      });
+                    });
+                  });
+
+                  req.on('error', (err) => {
+                    clearTimeout(timer);
+                    reject(err);
+                  });
+                });
+              };
+            }
+
+            validateDeployment(process.env.DEPLOYMENT_URL)
+              .then(report => {
+                require('fs').writeFileSync('deployment-reports/validation-report.json', JSON.stringify(report, null, 2));
+                console.log('📊 Validation report saved');
+              })
+              .catch(error => {
+                const report = {
+                  timestamp: new Date().toISOString(),
+                  url: process.env.DEPLOYMENT_URL,
+                  status: 'failed',
+                  error: error.message,
+                  checks: []
+                };
+                require('fs').writeFileSync('deployment-reports/validation-report.json', JSON.stringify(report, null, 2));
+                process.exit(1);
+              });
+            EOF
+
+            node validate-deployment.js || {
+              echo "status=failed" >> $GITHUB_OUTPUT
+              exit 1
+            }
+          fi
+
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "✅ Deployment validation completed successfully"
+
+      - name: Run smoke tests on deployment
+        if: steps.validation.outputs.status == 'success'
+        env:
+          DEPLOYMENT_URL: ${{ steps.setup.outputs.deployment_url }}
+        run: |
+          echo "💨 Running smoke tests on deployment..."
+
+          # Create smoke test for deployment
+          mkdir -p tests/deployment
+
+          cat > tests/deployment/smoke.spec.js << 'EOF'
+          const { test, expect } = require('@playwright/test');
+
+          const DEPLOYMENT_URL = process.env.DEPLOYMENT_URL;
+
+          test.describe('Deployment Smoke Tests', () => {
+            test('Deployment loads successfully', async ({ page }) => {
+              const errors = [];
+              page.on('console', msg => {
+                if (msg.type() === 'error') {
+                  errors.push(msg.text());
+                }
+              });
+
+              page.on('pageerror', err => {
+                errors.push(err.message);
+              });
+
+              // Navigate to deployment
+              await page.goto(DEPLOYMENT_URL, { waitUntil: 'networkidle', timeout: 30000 });
+
+              // Wait for initial load
+              await page.waitForTimeout(5000);
+
+              // Check for critical errors
+              const criticalErrors = errors.filter(e =>
+                e.includes('ReferenceError') ||
+                e.includes('TypeError: Cannot read') ||
+                e.includes('SyntaxError')
+              );
+
+              expect(criticalErrors.length).toBe(0);
+
+              // Verify basic page structure
+              const hasTitle = await page.title();
+              expect(hasTitle).toBeTruthy();
+
+              console.log(`✅ Deployment smoke test passed for ${DEPLOYMENT_URL}`);
+            });
+
+            test('Game initializes without errors', async ({ page }) => {
+              await page.goto(DEPLOYMENT_URL, { waitUntil: 'networkidle' });
+
+              // Wait for game initialization
+              await page.waitForTimeout(8000);
+
+              // Look for game elements
+              const gameElements = await page.locator('canvas, #game, .game-container, [data-game]').count();
+              expect(gameElements).toBeGreaterThan(0);
+
+              // Check for JavaScript errors
+              const jsErrors = [];
+              page.on('pageerror', err => jsErrors.push(err));
+
+              await page.waitForTimeout(2000);
+
+              expect(jsErrors.length).toBe(0);
+
+              console.log('✅ Game initialization smoke test passed');
+            });
+          });
+          EOF
+
+          # Run smoke tests
+          npx playwright test tests/deployment/smoke.spec.js \
+            --project=chromium \
+            --reporter=line,html \
+            --timeout=60000 || {
+              echo "❌ Deployment smoke tests failed"
+              echo "status=failed" >> $GITHUB_OUTPUT
+              exit 1
+            }
+
+      - name: Performance check
+        if: steps.validation.outputs.status == 'success'
+        env:
+          DEPLOYMENT_URL: ${{ steps.setup.outputs.deployment_url }}
+        run: |
+          echo "⚡ Running performance checks..."
+
+          cat > performance-check.js << 'EOF'
+          const https = require('https');
+          const http = require('http');
+          const { URL } = require('url');
+
+          async function checkPerformance(url) {
+            console.log(`🚀 Checking performance for: ${url}`);
+
+            const startTime = Date.now();
+            const urlObj = new URL(url);
+            const client = urlObj.protocol === 'https:' ? https : http;
+
+            return new Promise((resolve, reject) => {
+              const req = client.get(url, (res) => {
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                let dataSize = 0;
+                res.on('data', chunk => dataSize += chunk.length);
+                res.on('end', () => {
+                  const metrics = {
+                    responseTime,
+                    dataSize,
+                    statusCode: res.statusCode,
+                    passed: responseTime < 5000 && res.statusCode < 400
+                  };
+
+                  console.log(`⏱️  Response time: ${responseTime}ms`);
+                  console.log(`📦 Data size: ${Math.round(dataSize / 1024)}KB`);
+                  console.log(`🔢 Status code: ${res.statusCode}`);
+
+                  if (metrics.passed) {
+                    console.log('✅ Performance check passed');
+                  } else {
+                    console.log('⚠️ Performance issues detected');
+                  }
+
+                  resolve(metrics);
+                });
+              });
+
+              req.on('error', reject);
+              req.setTimeout(10000, () => reject(new Error('Timeout')));
+            });
+          }
+
+          checkPerformance(process.env.DEPLOYMENT_URL)
+            .catch(error => {
+              console.log('❌ Performance check failed:', error.message);
+              process.exit(1);
+            });
+          EOF
+
+          node performance-check.js
+
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-validation-${{ github.run_number }}
+          path: |
+            deployment-reports/
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Create validation report
+        if: always()
+        run: |
+          echo "📋 Creating deployment validation report..."
+
+          if [ -f "deployment-reports/validation-report.json" ]; then
+            cat > deployment-reports/summary.md << 'EOF'
+          # Deployment Validation Report
+
+          **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Deployment URL:** ${{ steps.setup.outputs.deployment_url }}
+          **Status:** ${{ steps.validation.outputs.status }}
+          **GitHub Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          ## Validation Results
+
+          EOF
+
+            node -e "
+              const report = JSON.parse(require('fs').readFileSync('deployment-reports/validation-report.json', 'utf8'));
+              console.log('**Overall Status:**', report.status.toUpperCase());
+              console.log('');
+              if (report.checks) {
+                console.log('**Checks Performed:**');
+                report.checks.forEach(check => {
+                  const emoji = check.status === 'passed' ? '✅' : check.status === 'failed' ? '❌' : '⚠️';
+                  console.log(\`- \${emoji} **\${check.name}:** \${check.message}\`);
+                });
+              }
+            " >> deployment-reports/summary.md
+          fi
+
+  rollback-on-failure:
+    name: Rollback on Validation Failure
+    runs-on: ubuntu-latest
+    needs: post-deployment-validation
+    if: failure() && needs.post-deployment-validation.outputs.validation_status == 'failed' && github.event.inputs.skip_rollback != 'true'
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger rollback
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOYMENT_URL: ${{ needs.post-deployment-validation.outputs.deployment_url }}
+        run: |
+          echo "🚨 Deployment validation failed - triggering rollback"
+          echo "Failed URL: $DEPLOYMENT_URL"
+
+          # Try to trigger existing rollback workflow
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/actions/workflows/rollback.yml/dispatches" \
+            -d '{"ref":"main","inputs":{"reason":"deployment_validation_failed"}}' \
+            2>/dev/null || {
+              echo "⚠️ Could not trigger rollback workflow - manual intervention required"
+            }
+
+          # Also try production-deployment rollback
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/actions/workflows/production-deployment.yml/dispatches" \
+            -d '{"ref":"main","inputs":{"action":"rollback"}}' \
+            2>/dev/null || echo "No production-deployment rollback available"
+
+      - name: Create rollback issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 Deployment Validation Failed - Rollback Initiated';
+            const body = `## Deployment Validation Failure
+
+            **Deployment URL:** ${{ needs.post-deployment-validation.outputs.deployment_url }}
+            **Failed at:** ${new Date().toISOString()}
+            **Validation Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ### Action Taken
+            - ✅ Automatic rollback has been triggered
+            - ⚠️ Manual verification required
+
+            ### Next Steps
+            1. [ ] Verify rollback completed successfully
+            2. [ ] Investigate validation failure root cause
+            3. [ ] Fix deployment issues
+            4. [ ] Re-deploy with fixes
+            5. [ ] Close this issue once resolved
+
+            ### Investigation
+            Check the validation report and logs in the failed GitHub Action run.
+
+            ---
+            _Auto-generated by Deployment Validation Pipeline_`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'rollback', 'urgent']
+            });
+
+  notify-results:
+    name: Notify Validation Results
+    runs-on: ubuntu-latest
+    needs: [post-deployment-validation, rollback-on-failure]
+    if: always()
+
+    steps:
+      - name: Notify success
+        if: needs.post-deployment-validation.outputs.validation_status == 'success'
+        run: |
+          echo "🎉 Deployment validation successful!"
+          echo "✅ Deployment URL: ${{ needs.post-deployment-validation.outputs.deployment_url }}"
+          echo "📊 Validation report available in artifacts"
+
+      - name: Notify failure
+        if: needs.post-deployment-validation.outputs.validation_status == 'failed'
+        run: |
+          echo "❌ Deployment validation failed!"
+          echo "🚨 URL: ${{ needs.post-deployment-validation.outputs.deployment_url }}"
+          echo "🔄 Rollback has been initiated"
+          echo "🔍 Check validation report for details"
+          exit 1

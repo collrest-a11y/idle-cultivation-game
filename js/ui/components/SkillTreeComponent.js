@@ -4,7 +4,7 @@
  */
 class SkillTreeComponent extends BaseComponent {
     constructor(container, eventManager, skillSystem) {
-        super('skill-tree', container);
+        super(container, { id: 'skill-tree', eventManager, skillSystem });
 
         this.eventManager = eventManager;
         this.skillSystem = skillSystem;
@@ -51,11 +51,31 @@ class SkillTreeComponent extends BaseComponent {
     }
 
     /**
+     * Create the component's DOM element (required by BaseComponent)
+     */
+    createElement() {
+        // Create container element
+        this.element = document.createElement('div');
+        this.element.className = 'skill-tree-component';
+        this.element.id = 'skill-tree-component';
+    }
+
+    /**
+     * Render the component (required by BaseComponent)
+     */
+    render() {
+        if (this.element && this.skillData) {
+            this._createSkillTreeUI();
+        }
+    }
+
+    /**
      * Initialize the skill tree component
      */
     async initialize() {
         try {
-            await super.initialize();
+            // Don't call super.initialize() as it expects different behavior
+            this.isInitialized = false;
 
             // Load skill data
             await this._loadSkillData();
@@ -72,6 +92,7 @@ class SkillTreeComponent extends BaseComponent {
             // Initial render
             await this._refreshSkillData();
 
+            this.isInitialized = true;
             console.log('SkillTreeComponent: Initialization complete');
 
         } catch (error) {

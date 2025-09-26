@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Character Transition</title>
+    <style>
+        body {
+            background: #1a1a2e;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover { background: #45a049; }
+        .section {
+            border: 1px solid #666;
+            padding: 20px;
+            margin: 20px 0;
+            background: #222;
+        }
+        .hidden { display: none !important; }
+        .status { padding: 10px; background: #333; margin: 10px 0; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+    </style>
+</head>
+<body>
+    <h1>Character Creation Transition Tester</h1>
+
+    <div class="section">
+        <h2>Direct Test</h2>
+        <button onclick="testDirectTransition()">Test Direct Transition</button>
+        <button onclick="testWithCharacterData()">Test With Character Data</button>
+        <button onclick="clearLocalStorage()">Clear Local Storage</button>
+        <button onclick="checkState()">Check Current State</button>
+    </div>
+
+    <div class="section">
+        <h2>Status</h2>
+        <div id="status" class="status"></div>
+    </div>
+
+    <!-- Mock elements to test transition -->
+    <div id="character-creation" class="section">
+        <h3>Character Creation (Mock)</h3>
+        <p>This represents the character creation screen</p>
+    </div>
+
+    <div id="game-interface" class="section hidden">
+        <h3>Game Interface (Mock)</h3>
+        <p>This represents the game interface</p>
+    </div>
+
+    <div id="game-view" class="section hidden">
+        <h3>Game View (Mock)</h3>
+        <p>This represents the game view</p>
+    </div>
+
+    <script>
+        function log(msg, isError = false) {
+            const status = document.getElementById('status');
+            const entry = document.createElement('div');
+            entry.className = isError ? 'error' : 'success';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            status.appendChild(entry);
+            console.log(msg);
+        }
+
+        function testDirectTransition() {
+            log('Testing direct transition...');
+
+            const characterCreation = document.getElementById('character-creation');
+            const gameInterface = document.getElementById('game-interface');
+            const gameView = document.getElementById('game-view');
+
+            if (characterCreation) {
+                characterCreation.style.display = 'none';
+                characterCreation.classList.add('hidden');
+                log('✓ Character creation hidden');
+            } else {
+                log('✗ Character creation element not found', true);
+            }
+
+            if (gameInterface) {
+                gameInterface.classList.remove('hidden');
+                gameInterface.style.display = 'block';
+                log('✓ Game interface shown');
+            } else {
+                log('✗ Game interface element not found', true);
+            }
+
+            if (gameView) {
+                gameView.classList.remove('hidden');
+                gameView.style.display = 'block';
+                log('✓ Game view shown');
+            } else {
+                log('✗ Game view element not found', true);
+            }
+
+            document.title = 'Game - Idle Cultivation';
+            log('✓ Title updated');
+        }
+
+        function testWithCharacterData() {
+            log('Testing transition with character data...');
+
+            // Save character data
+            const characterData = {
+                origin: 'dust-road',
+                vow: 'protect',
+                mark: 'thunder'
+            };
+
+            localStorage.setItem('characterChoices', JSON.stringify(characterData));
+            localStorage.setItem('idleCultivation_hasCharacter', 'true');
+            log('✓ Character data saved to localStorage');
+
+            // Then do transition
+            testDirectTransition();
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('characterChoices');
+            localStorage.removeItem('idleCultivation_hasCharacter');
+            log('✓ Local storage cleared');
+
+            // Reset UI
+            const characterCreation = document.getElementById('character-creation');
+            const gameInterface = document.getElementById('game-interface');
+            const gameView = document.getElementById('game-view');
+
+            if (characterCreation) {
+                characterCreation.style.display = 'block';
+                characterCreation.classList.remove('hidden');
+            }
+            if (gameInterface) {
+                gameInterface.style.display = 'none';
+                gameInterface.classList.add('hidden');
+            }
+            if (gameView) {
+                gameView.style.display = 'none';
+                gameView.classList.add('hidden');
+            }
+
+            log('✓ UI reset to initial state');
+        }
+
+        function checkState() {
+            log('Checking current state...');
+
+            const characterCreation = document.getElementById('character-creation');
+            const gameInterface = document.getElementById('game-interface');
+            const gameView = document.getElementById('game-view');
+
+            log(`Character Creation: ${characterCreation ? (characterCreation.classList.contains('hidden') ? 'Hidden' : 'Visible') : 'Not Found'}`);
+            log(`Game Interface: ${gameInterface ? (gameInterface.classList.contains('hidden') ? 'Hidden' : 'Visible') : 'Not Found'}`);
+            log(`Game View: ${gameView ? (gameView.classList.contains('hidden') ? 'Hidden' : 'Visible') : 'Not Found'}`);
+
+            const hasCharacter = localStorage.getItem('idleCultivation_hasCharacter');
+            const characterData = localStorage.getItem('characterChoices');
+            log(`Has Character: ${hasCharacter}`);
+            log(`Character Data: ${characterData ? 'Present' : 'None'}`);
+            log(`Document Title: ${document.title}`);
+        }
+
+        // Initial state check
+        window.addEventListener('DOMContentLoaded', () => {
+            log('Page loaded, ready for testing');
+            checkState();
+        });
+    </script>
+</body>
+</html>
