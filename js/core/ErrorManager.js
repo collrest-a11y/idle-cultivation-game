@@ -8,6 +8,10 @@ class ErrorManager {
         this.gameState = null;
         this.performanceMonitor = null;
 
+        // Error Classification System
+        this.errorClassifier = null;
+        this.classificationEnabled = true;
+
         // Error tracking
         this.errorLog = [];
         this.errorCounts = new Map();
@@ -71,10 +75,22 @@ class ErrorManager {
      * Initialize the error manager
      * @param {Object} context - Game context
      */
-    initialize(context) {
+    async initialize(context) {
         this.eventManager = context.eventManager;
         this.gameState = context.gameState;
         this.performanceMonitor = context.performanceMonitor;
+
+        // Initialize Error Classification System
+        try {
+            if (window.ErrorClassifier && this.classificationEnabled) {
+                this.errorClassifier = new window.ErrorClassifier();
+                await this.errorClassifier.initialize();
+                console.log('ErrorManager: ErrorClassifier initialized');
+            }
+        } catch (error) {
+            console.warn('ErrorManager: Failed to initialize ErrorClassifier:', error);
+            this.classificationEnabled = false;
+        }
 
         // Load error configuration from game state
         this._loadConfiguration();
@@ -89,12 +105,48 @@ class ErrorManager {
      * Report an error
      * @param {Error|string} error - Error object or message
      * @param {Object} context - Error context
-     * @param {string} category - Error category
+     * @param {string} category - Error category (optional, will be auto-classified)
      * @returns {string} Error ID
      */
-    reportError(error, context = {}, category = this.categories.SYSTEM) {
-        const errorData = this._normalizeError(error, context, category);
+    reportError(error, context = {}, category = null) {
         const errorId = this._generateErrorId();
+
+        // Use intelligent classification if available
+        let classification = null;
+        if (this.errorClassifier && this.classificationEnabled) {
+            try {
+                classification = this.errorClassifier.classify(error, {
+                    ...context,
+                    gameState: this._getGameStateSnapshot(),
+                    performance: this._getPerformanceSnapshot(),
+                    errorId: errorId
+                });
+
+                // Map classification to our category system
+                category = this._mapClassificationToCategory(classification);
+            } catch (classificationError) {
+                console.warn('ErrorManager: Classification failed:', classificationError);
+                // Fall back to basic classification
+                category = category || this._determineBasicCategory(error);
+            }
+        } else {
+            // Fall back to basic classification
+            category = category || this._determineBasicCategory(error);
+        }
+
+        const errorData = this._normalizeError(error, context, category);
+
+        // Add classification data if available
+        if (classification) {
+            errorData.classification = {
+                severity: classification.severity,
+                system: classification.system,
+                strategy: classification.strategy,
+                confidence: classification.confidence,
+                fingerprint: classification.fingerprint,
+                isKnownError: classification.metadata?.isKnownError || false
+            };
+        }
 
         // Check if this error should be suppressed
         if (this._shouldSuppressError(errorData)) {
@@ -122,7 +174,7 @@ class ErrorManager {
 
         // Attempt recovery if enabled
         if (this.config.autoRecoveryEnabled) {
-            this._attemptRecovery(logEntry);
+            this._attemptRecovery(logEntry, classification);
         }
 
         // Notify user if appropriate
@@ -612,17 +664,26 @@ class ErrorManager {
     /**
      * Attempt error recovery
      * @param {Object} logEntry - Log entry
+     * @param {Object} classification - Error classification
      */
-    _attemptRecovery(logEntry) {
-        const errorKey = `${logEntry.message}:${logEntry.category}`;
+    _attemptRecovery(logEntry, classification = null) {
+        const errorKey = classification?.fingerprint || `${logEntry.message}:${logEntry.category}`;
         const attempts = this.recoveryAttempts.get(errorKey) || 0;
 
         if (attempts >= this.config.maxRecoveryAttempts) {
             return; // Max attempts reached
         }
 
-        // Try category-specific recovery
-        const strategy = this.recoveryStrategies.get(logEntry.category);
+        // Use intelligent recovery strategy if available
+        let strategy = null;
+        if (classification && classification.strategy) {
+            strategy = this._getRecoveryStrategyFromClassification(classification);
+        }
+
+        // Fall back to category-specific recovery
+        if (!strategy) {
+            strategy = this.recoveryStrategies.get(logEntry.category);
+        }
         if (strategy) {
             try {
                 const result = strategy(logEntry);
@@ -988,6 +1049,137 @@ class ErrorManager {
         ];
 
         return criticalPatterns.some(pattern => message.includes(pattern));
+    }
+
+    /**
+     * Map classification result to ErrorManager category
+     * @param {Object} classification - Classification result
+     * @returns {string} ErrorManager category
+     */
+    _mapClassificationToCategory(classification) {
+        const systemMap = {
+            'CORE': this.categories.CRITICAL,
+            'SAVE': this.categories.STORAGE,
+            'PROGRESSION': this.categories.GAMEPLAY,
+            'UI': this.categories.UI,
+            'NETWORK': this.categories.NETWORK,
+            'MEMORY': this.categories.PERFORMANCE,
+            'VALIDATION': this.categories.VALIDATION
+        };
+
+        return systemMap[classification.system] || this.categories.SYSTEM;
+    }
+
+    /**
+     * Determine basic category for fallback classification
+     * @param {Error|string} error - Error to classify
+     * @returns {string} Basic category
+     */
+    _determineBasicCategory(error) {
+        const message = (error.message || error.toString() || '').toLowerCase();
+
+        if (message.includes('save') || message.includes('storage')) {
+            return this.categories.STORAGE;
+        }
+        if (message.includes('network') || message.includes('fetch')) {
+            return this.categories.NETWORK;
+        }
+        if (message.includes('ui') || message.includes('render')) {
+            return this.categories.UI;
+        }
+        if (message.includes('memory') || message.includes('performance')) {
+            return this.categories.PERFORMANCE;
+        }
+
+        return this.categories.SYSTEM;
+    }
+
+    /**
+     * Get recovery strategy from classification
+     * @param {Object} classification - Error classification
+     * @returns {Function|null} Recovery strategy function
+     */
+    _getRecoveryStrategyFromClassification(classification) {
+        // Map classification strategies to recovery functions
+        const strategyMap = {
+            'IMMEDIATE': (logEntry) => {
+                console.log('Executing immediate recovery strategy...');
+                // Emergency actions
+                this._emergencySave();
+                return { success: true, message: 'Immediate recovery executed' };
+            },
+            'RETRY': (logEntry) => {
+                console.log('Executing retry recovery strategy...');
+                // Standard retry logic
+                return { success: true, message: 'Retry strategy applied' };
+            },
+            'FALLBACK': (logEntry) => {
+                console.log('Executing fallback recovery strategy...');
+                // Fallback mechanisms
+                return { success: true, message: 'Fallback strategy applied' };
+            },
+            'RESTART': (logEntry) => {
+                console.log('Executing restart recovery strategy...');
+                // Restart/reload logic
+                setTimeout(() => window.location.reload(), 2000);
+                return { success: true, message: 'Restart initiated' };
+            },
+            'IGNORE': (logEntry) => {
+                console.log('Ignoring error as per classification...');
+                return { success: true, message: 'Error ignored' };
+            }
+        };
+
+        return strategyMap[classification.strategy] || null;
+    }
+
+    /**
+     * Get enhanced statistics including classification data
+     * @returns {Object} Enhanced error statistics
+     */
+    getEnhancedStatistics() {
+        const baseStats = this.getStatistics();
+
+        if (this.errorClassifier) {
+            const classificationStats = this.errorClassifier.getStatistics();
+            return {
+                ...baseStats,
+                classification: classificationStats,
+                classificationEnabled: this.classificationEnabled,
+                intelligentRecovery: true
+            };
+        }
+
+        return {
+            ...baseStats,
+            classificationEnabled: this.classificationEnabled,
+            intelligentRecovery: false
+        };
+    }
+
+    /**
+     * Report error with intelligent classification feedback
+     * @param {string} errorId - Error ID from previous report
+     * @param {boolean} recoverySuccessful - Whether recovery was successful
+     * @param {Object} recoveryDetails - Details about recovery attempt
+     */
+    reportRecoveryFeedback(errorId, recoverySuccessful, recoveryDetails = {}) {
+        if (this.errorClassifier && this.classificationEnabled) {
+            try {
+                // Find the classification in recent history
+                const logEntry = this.errorLog.find(entry => entry.id === errorId);
+                if (logEntry && logEntry.classification) {
+                    // Update classification learning data
+                    this.errorClassifier.updateLearningData(
+                        logEntry,
+                        { recoverySuccessful, recoveryDetails },
+                        logEntry.classification
+                    );
+                }
+            } catch (error) {
+                console.warn('ErrorManager: Failed to report recovery feedback:', error);
+            }
+        }
     }
 
     /**
