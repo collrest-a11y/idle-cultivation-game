@@ -41,7 +41,8 @@
       "Read(//c/Users/Brendan/Documents/GitHub/epic-Fix-Game/**)",
       "Bash(cat:*)",
       "Bash(npm test)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(npx playwright:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Cultivation - With Error Collector</title>
+
+    <!-- Original game styles -->
+    <link rel="stylesheet" href="styles-gfl.css">
+    <link rel="stylesheet" href="css/views.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/skills.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <link rel="stylesheet" href="css/debug-dashboard.css">
+
+    <!-- Same inline styles as original -->
+    <style>
+        /* Loading Screen Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-container {
+            text-align: center;
+            max-width: 400px;
+            padding: 2rem;
+        }
+
+        /* ... rest of original styles ... */
+    </style>
+</head>
+<body>
+    <!-- ERROR COLLECTOR INJECTION -->
+    <script src="claude-error-collector/game-connector.js"></script>
+
+    <!-- Rest of the original HTML content from index.html -->
+    <div id="loading-screen" class="loading-screen">
+        <!-- ... original loading screen content ... -->
+    </div>
+
+    <div id="app">
+        <!-- ... original app content ... -->
+    </div>
+
+    <!-- All original scripts -->
+    <script src="js/core/LoadingSequenceOptimizer.js"></script>
+    <script src="js/core/ConsoleErrorSuppressor.js"></script>
+    <script src="js/core/DOMQueryOptimizer.js"></script>
+    <script src="js/core/RenderOptimizer.js"></script>
+    <script src="js/core/EnhancedPerformanceMonitor.js"></script>
+    <script src="production-config.js"></script>
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/ErrorManager.js"></script>
+    <script src="js/core/SafeMode.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="health-check.js"></script>
+    <script src="js/core/TimeManager.js"></script>
+    <script src="js/core/PerformanceMonitor.js"></script>
+    <script src="js/core/BalanceManager.js"></script>
+    <script src="js/core/AnimationManager.js"></script>
+    <script src="js/core/MobileManager.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/core/ProgressiveLoader.js"></script>
+    <script src="js/utils/StorageUtils.js"></script>
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/DataValidator.js"></script>
+    <script src="js/core/MigrationManager.js"></script>
+    <script src="js/core/StateRecoveryManager.js"></script>
+    <script src="js/core/GameSaveSystem.js"></script>
+    <script src="js/utils/Compression.js"></script>
+    <script src="js/data/cultivation-data.js"></script>
+    <script src="js/data/combat-data.js"></script>
+    <script src="js/data/sect-data.js"></script>
+    <script src="js/data/skill-data.js"></script>
+    <script src="js/systems/CultivationSystem.js"></script>
+    <script src="js/systems/RealmManager.js"></script>
+    <script src="js/systems/TechniqueManager.js"></script>
+    <script src="js/systems/OfflineCalculator.js"></script>
+    <script src="js/systems/CultivationIntegration.js"></script>
+    <script src="js/systems/SectSystem.js"></script>
+    <script src="js/systems/SectManager.js"></script>
+    <script src="js/systems/SectActivities.js"></script>
+    <script src="js/systems/SectCompetition.js"></script>
+    <script src="js/systems/SectIntegration.js"></script>
+    <script src="js/systems/CraftingSystem.js"></script>
+    <script src="js/systems/ShopManager.js"></script>
+    <script src="js/managers/SkillManager.js"></script>
+    <script src="js/systems/SkillSystem.js"></script>
+    <script src="js/systems/SkillIntegration.js"></script>
+    <script src="js/ui/BaseComponent.js"></script>
+    <script src="js/ui/UIManager.js"></script>
+    <script src="js/ui/LoadingProgress.js"></script>
+    <script src="js/ui/SafeModeUI.js"></script>
+    <script src="js/ui/components/RecoveryModal.js"></script>
+    <script src="js/ui/components/SkillTreeComponent.js"></script>
+    <script src="js/ui/components/SkillDetailModal.js"></script>
+    <script src="js/views/GameView.js"></script>
+    <script src="js/views/ViewManager.js"></script>
+    <script src="js/views/MainMenuView.js"></script>
+    <script src="js/views/CultivationView.js"></script>
+    <script src="js/views/ScriptureView.js"></script>
+    <script src="js/views/CombatView.js"></script>
+    <script src="js/views/SectView.js"></script>
+    <script src="js/views/QuestView.js"></script>
+    <script src="js/views/ViewIntegration.js"></script>
+    <script src="js/systems/PowerCalculator.js"></script>
+    <script src="js/systems/MountSystem.js"></script>
+    <script src="js/systems/WingSystem.js"></script>
+    <script src="js/systems/AccessorySystem.js"></script>
+    <script src="js/systems/RuneSystem.js"></script>
+    <script src="js/systems/MeridianSystem.js"></script>
+    <script src="js/systems/DantianSystem.js"></script>
+    <script src="js/systems/SoulSystem.js"></script>
+    <script src="js/character-creation-fallback.js"></script>
+    <script src="js/system-health-dashboard.js"></script>
+    <script src="js/tests/test-state-validation.js"></script>
+    <script src="js/tests/save-system-integration-tests.js"></script>
+    <script src="js/main.js"></script>
+
+    <!-- Original loading control script -->
+    <script>
+        window.LoadingManager = {
+            // ... original LoadingManager code ...
+        };
+    </script>
+</body>
+</html>

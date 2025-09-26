@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Error Collection System</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.danger {
+            background: #f44336;
+        }
+        button.danger:hover {
+            background: #da190b;
+        }
+        button.warning {
+            background: #ff9800;
+        }
+        button.warning:hover {
+            background: #e68900;
+        }
+        .status {
+            padding: 10px;
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Error Collection System</h1>
+
+    <div class="status">
+        <strong>Status:</strong> <span id="status">Loading...</span>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Connection Test</h2>
+        <p>First, make sure the error collector is connected:</p>
+        <button onclick="checkConnection()">Check Connection</button>
+        <button onclick="openCollector()">Open Error Collector</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Generate Test Errors</h2>
+        <p>Click these buttons to generate different types of errors:</p>
+
+        <button onclick="generateReferenceError()">Reference Error</button>
+        <button onclick="generateTypeError()">Type Error</button>
+        <button onclick="generateSyntaxError()" class="warning">Syntax Error</button>
+        <button onclick="generateAsyncError()">Async Error</button>
+        <button onclick="generatePromiseRejection()">Promise Rejection</button>
+        <button onclick="generateMultipleErrors()" class="danger">Generate 5 Errors</button>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Game-Specific Errors</h2>
+        <p>Simulate game-specific error scenarios:</p>
+
+        <button onclick="simulateSaveError()">Save System Error</button>
+        <button onclick="simulateResourceError()">Resource Calculation Error</button>
+        <button onclick="simulateCombatError()">Combat System Error</button>
+        <button onclick="simulateUIError()">UI Render Error</button>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Error Collection Workflow</h2>
+        <ol>
+            <li>Click buttons above to generate errors</li>
+            <li>Open the Error Collector window</li>
+            <li>Click "Copy for Claude" to get formatted errors</li>
+            <li>Or click "Create PM Issue" to generate issue file</li>
+            <li>Paste errors to Claude or import PM issue</li>
+        </ol>
+    </div>
+
+    <!-- Include the error connector -->
+    <script src="claude-error-collector/game-connector.js"></script>
+
+    <script>
+        // Test functions
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+        }
+
+        function checkConnection() {
+            const indicator = document.getElementById('claude-error-indicator');
+            if (indicator) {
+                updateStatus('✅ Error collector is connected!', 'success');
+            } else {
+                updateStatus('❌ Error collector not connected', 'error');
+            }
+        }
+
+        function openCollector() {
+            window.open('claude-error-collector/index.html', 'ClaudeErrorCollector',
+                'width=1200,height=800,menubar=no,toolbar=no');
+            updateStatus('Error collector window opened');
+        }
+
+        // Error generators
+        function generateReferenceError() {
+            try {
+                nonExistentFunction(); // This will throw
+            } catch(e) {
+                throw new Error("ReferenceError: nonExistentFunction is not defined");
+            }
+        }
+
+        function generateTypeError() {
+            const obj = null;
+            obj.property = 'value'; // This will throw
+        }
+
+        function generateSyntaxError() {
+            try {
+                eval('function broken() { return "missing closing brace"');
+            } catch(e) {
+                throw new SyntaxError("Unexpected end of input");
+            }
+        }
+
+        function generateAsyncError() {
+            setTimeout(() => {
+                throw new Error("Async error: Operation timed out after 1000ms");
+            }, 100);
+        }
+
+        function generatePromiseRejection() {
+            Promise.reject(new Error("Promise rejected: Failed to fetch game data"));
+        }
+
+        function generateMultipleErrors() {
+            for (let i = 1; i <= 5; i++) {
+                setTimeout(() => {
+                    throw new Error(`Multiple error ${i}/5: Stack overflow in game loop iteration ${i * 1000}`);
+                }, i * 200);
+            }
+            updateStatus('Generating 5 errors...', 'error');
+        }
+
+        // Game-specific error simulators
+        function simulateSaveError() {
+            throw new Error("SaveManager: Failed to serialize game state - Circular reference in player.inventory[3]");
+        }
+
+        function simulateResourceError() {
+            throw new Error("ResourceSystem: Invalid resource calculation - NaN value for cultivation.qi.current");
+        }
+
+        function simulateCombatError() {
+            throw new Error("CombatSystem: Cannot read property 'damage' of undefined enemy at position 2");
+        }
+
+        function simulateUIError() {
+            throw new Error("ViewManager: Failed to render component 'InventoryPanel' - Missing required prop 'items'");
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            setTimeout(checkConnection, 1000);
+        });
+
+        console.log('Test page loaded. Click buttons to generate errors.');
+    </script>
+</body>
+</html>

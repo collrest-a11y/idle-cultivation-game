@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+import { chromium } from 'playwright';
 
 async function testErrorDetection() {
   console.log('Testing error detection system...');

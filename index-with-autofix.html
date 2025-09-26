@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Cultivation Game - With Auto Fix</title>
+
+    <!-- Original game styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/combat.css">
+    <link rel="stylesheet" href="css/sect.css">
+    <link rel="stylesheet" href="css/mobile.css">
+
+    <style>
+        /* Auto-fix system indicator */
+        #autofix-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #autofix-indicator.connected {
+            border-color: #4ade80;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+        }
+
+        #autofix-indicator.error {
+            border-color: #f87171;
+            box-shadow: 0 0 20px rgba(248, 113, 113, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f87171;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: #4ade80;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auto-fix system indicator -->
+    <div id="autofix-indicator">
+        <span class="status-dot" id="autofix-status"></span>
+        <span id="autofix-text">Auto-Fix: Connecting...</span>
+    </div>
+
+    <!-- Game container -->
+    <div id="game-container">
+        <div id="loading-screen">
+            <div class="spinner"></div>
+            <p>Loading game...</p>
+        </div>
+
+        <!-- Main game view -->
+        <div id="gameView" style="display:none;"></div>
+
+        <!-- Character creation modal -->
+        <div id="characterCreation" class="modal" style="display:none;">
+            <div class="modal-content">
+                <h2>Create Your Cultivator</h2>
+                <div id="character-creation-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTOMATED FIX SYSTEM INJECTION -->
+    <script>
+        (function() {
+            // Configuration
+            const FIX_SYSTEM_URL = 'ws://localhost:3002';
+            const DASHBOARD_URL = 'http://localhost:3003';
+
+            // Connect to fix system
+            let ws = null;
+            let connected = false;
+            let reconnectTimeout = null;
+            const errorQueue = [];
+            const actionHistory = [];
+            const maxActionHistory = 50;
+
+            function connect() {
+                try {
+                    ws = new WebSocket(FIX_SYSTEM_URL);
+
+                    ws.onopen = () => {
+                        console.log('🤖 Connected to Automated Fix System');
+                        connected = true;
+
+                        // Update UI
+                        const indicator = document.getElementById('autofix-indicator');
+                        const status = document.getElementById('autofix-status');
+                        const text = document.getElementById('autofix-text');
+
+                        if (indicator) {
+                            indicator.classList.add('connected');
+                            indicator.classList.remove('error');
+                        }
+                        if (status) status.classList.add('active');
+                        if (text) text.textContent = 'Auto-Fix: Active';
+
+                        // Send queued errors
+                        while (errorQueue.length > 0) {
+                            ws.send(JSON.stringify(errorQueue.shift()));
+                        }
+                    };
+
+                    ws.onclose = () => {
+                        console.log('Auto-fix system disconnected');
+                        connected = false;
+
+                        // Update UI
+                        const status = document.getElementById('autofix-status');
+                        const text = document.getElementById('autofix-text');
+
+                        if (status) status.classList.remove('active');
+                        if (text) text.textContent = 'Auto-Fix: Disconnected';
+
+                        // Attempt reconnection
+                        if (!reconnectTimeout) {
+                            reconnectTimeout = setTimeout(() => {
+                                reconnectTimeout = null;
+                                connect();
+                            }, 5000);
+                        }
+                    };
+
+                    ws.onerror = (error) => {
+                        console.error('Auto-fix connection error:', error);
+                        const indicator = document.getElementById('autofix-indicator');
+                        if (indicator) {
+                            indicator.classList.add('error');
+                        }
+                    };
+
+                    ws.onmessage = (event) => {
+                        try {
+                            const message = JSON.parse(event.data);
+                            handleMessage(message);
+                        } catch (e) {
+                            console.error('Failed to parse fix system message:', e);
+                        }
+                    };
+
+                } catch (error) {
+                    console.error('Failed to connect to fix system:', error);
+                    // Retry connection
+                    setTimeout(connect, 5000);
+                }
+            }
+
+            function handleMessage(message) {
+                switch (message.type) {
+                    case 'fixApplied':
+                        console.log('✅ Fix applied:', message.fix.description);
+                        // Show notification
+                        showNotification('Fix Applied', message.fix.description, 'success');
+                        // Reload page after delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                        break;
+
+                    case 'init':
+                        console.log('Fix system initialized:', message.message);
+                        break;
+
+                    default:
+                        console.log('Fix system message:', message);
+                }
+            }
+
+            function sendError(error) {
+                const errorData = {
+                    type: 'error',
+                    error: {
+                        message: error.message || 'Unknown error',
+                        file: error.file || window.location.href,
+                        line: error.line || 0,
+                        column: error.column || 0,
+                        stack: error.stack || '',
+                        timestamp: Date.now(),
+                        userActions: actionHistory.slice(-10),
+                        gameState: getGameState()
+                    }
+                };
+
+                if (connected && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(errorData));
+                } else {
+                    errorQueue.push(errorData);
+                    if (errorQueue.length > 100) {
+                        errorQueue.shift(); // Limit queue size
+                    }
+                }
+            }
+
+            function trackAction(type, details) {
+                const action = {
+                    type,
+                    details,
+                    timestamp: Date.now()
+                };
+
+                actionHistory.push(action);
+                if (actionHistory.length > maxActionHistory) {
+                    actionHistory.shift();
+                }
+
+                // Send to fix system
+                if (connected && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'action',
+                        action
+                    }));
+                }
+            }
+
+            function getGameState() {
+                try {
+                    if (window.game && window.game.gameState) {
+                        return {
+                            player: window.game.gameState.get('player'),
+                            level: window.game.gameState.get('level'),
+                            resources: window.game.gameState.get('resources')
+                        };
+                    }
+                } catch (e) {
+                    // Ignore errors in getting game state
+                }
+                return null;
+            }
+
+            function showNotification(title, message, type = 'info') {
+                const colors = {
+                    success: '#4ade80',
+                    error: '#f87171',
+                    info: '#60a5fa'
+                };
+
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    background: rgba(0, 0, 0, 0.9);
+                    color: white;
+                    border-radius: 10px;
+                    border-left: 4px solid ${colors[type]};
+                    z-index: 10001;
+                    animation: slideIn 0.3s ease;
+                    max-width: 300px;
+                `;
+
+                notification.innerHTML = `
+                    <strong>${title}</strong><br>
+                    <span style="font-size: 12px; opacity: 0.9;">${message}</span>
+                `;
+
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+            }
+
+            // Capture errors
+            window.addEventListener('error', (event) => {
+                sendError({
+                    message: event.message,
+                    file: event.filename,
+                    line: event.lineno,
+                    column: event.colno,
+                    stack: event.error?.stack
+                });
+            });
+
+            // Capture unhandled promise rejections
+            window.addEventListener('unhandledrejection', (event) => {
+                sendError({
+                    message: 'Unhandled Promise Rejection: ' + event.reason,
+                    stack: event.reason?.stack
+                });
+            });
+
+            // Track user actions
+            document.addEventListener('click', (event) => {
+                trackAction('click', {
+                    target: event.target.tagName,
+                    id: event.target.id,
+                    className: event.target.className,
+                    text: event.target.textContent?.substring(0, 50)
+                });
+            });
+
+            // Track form submissions
+            document.addEventListener('submit', (event) => {
+                trackAction('submit', {
+                    target: event.target.tagName,
+                    id: event.target.id
+                });
+            });
+
+            // Add CSS for notifications
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+
+            // Initialize connection
+            connect();
+
+            // Add keyboard shortcut to open dashboard
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                    window.open(DASHBOARD_URL, '_blank');
+                }
+            });
+
+            console.log('✅ Automated Fix System injected');
+            console.log('Press Ctrl+Shift+D to open dashboard');
+
+        })();
+    </script>
+
+    <!-- Game Scripts -->
+    <script src="js/core/ErrorManager.js"></script>
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/GameState.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/GameSaveSystem.js"></script>
+    <script src="js/systems/CraftingSystem.js"></script>
+    <script src="js/systems/ShopManager.js"></script>
+    <script src="js/ui/ViewManager.js"></script>
+    <script src="js/views/BaseView.js"></script>
+    <script src="js/views/GameView.js"></script>
+    <script src="js/views/MainMenuView.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

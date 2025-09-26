@@ -426,6 +426,4 @@ while (retries > 0) {
 }
 
 // Export for use in the validation system
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = MCPFixGenerator;
-}
+export { MCPFixGenerator };

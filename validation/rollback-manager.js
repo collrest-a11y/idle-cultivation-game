@@ -414,7 +414,7 @@ export class RollbackManager {
     const plan = {
       filesToRestore: [],
       filesToDelete: [],
-      directoriesTo: Create: []
+      directoriesToCreate: []
     };
 
     // Scan checkpoint files

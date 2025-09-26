@@ -50,7 +50,7 @@ class IdleCultivationGame {
             this.config = { ...this.config, ...userConfig };
 
             // Initialize core systems
-            await this._initializeCoreystems();
+            await this._initializeCoreSystems();
 
             // Set up error handling
             this._setupErrorHandling();
@@ -257,7 +257,7 @@ class IdleCultivationGame {
 
     // Private methods
 
-    async _initializeCoreystems() {
+    async _initializeCoreSystems() {
         console.log('🔧 Initializing core systems...');
 
         // Initialize EventManager
