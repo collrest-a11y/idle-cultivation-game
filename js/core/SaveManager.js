@@ -18,8 +18,42 @@ class SaveManager {
             totalFailures: 0,
             compressionRatio: 0,
             lastSaveTime: 0,
-            lastLoadTime: 0
+            lastLoadTime: 0,
+            checkpointsCreated: 0,
+            rollbacksPerformed: 0,
+            corruptedCheckpoints: 0
         };
+
+        // Checkpoint system configuration
+        this.checkpointConfig = {
+            intervals: {
+                auto: 300000,        // 5 minutes
+                milestone: 'event',  // On significant events
+                error: 'immediate'   // Before error recovery
+            },
+            retention: {
+                count: 10,           // Keep 10 checkpoints
+                maxAge: 86400000,    // 24 hours max age
+                criticalKeep: 3      // Always keep 3 critical checkpoints
+            },
+            validation: {
+                enabled: true,
+                strictMode: false,   // Allow minor inconsistencies
+                autoRepair: true     // Attempt automatic repairs
+            },
+            performance: {
+                maxCreationTime: 100,  // 100ms max for checkpoint creation
+                maxRollbackTime: 500,  // 500ms max for rollback
+                minInterval: 30000     // 30s minimum between checkpoints
+            }
+        };
+
+        // Checkpoint storage and state
+        this.checkpoints = new Map();
+        this.lastCheckpointTime = 0;
+        this.checkpointInProgress = false;
+        this.rollbackStack = [];
+        this.criticalCheckpoints = new Set();
 
         // Storage backend with fallback
         this.storage = this._initializeStorage();
@@ -28,7 +62,10 @@ class SaveManager {
         this.saveQueue = [];
         this.isSaving = false;
 
-        console.log('SaveManager initialized');
+        // Initialize checkpoint system
+        this._initializeCheckpointSystem();
+
+        console.log('SaveManager initialized with checkpoint system');
     }
 
     /**
@@ -380,6 +417,860 @@ class SaveManager {
     setEnabled(enabled) {
         this.isEnabled = enabled;
         console.log(`SaveManager: ${enabled ? 'Enabled' : 'Disabled'}`);
+    }
+
+    // ===== CHECKPOINT SYSTEM METHODS =====
+
+    /**
+     * Initialize checkpoint system
+     */
+    _initializeCheckpointSystem() {
+        // Load existing checkpoints from storage
+        this._loadExistingCheckpoints();
+
+        // Set up automatic checkpoint intervals
+        this._setupAutomaticCheckpointing();
+
+        // Clean up old checkpoints
+        this._cleanupOldCheckpoints();
+
+        console.log('Checkpoint system initialized');
+    }
+
+    /**
+     * Create a checkpoint of current game state
+     * @param {Object} gameState - Current game state to checkpoint
+     * @param {Object} options - Checkpoint options
+     * @returns {Promise<string|null>} Checkpoint ID or null if failed
+     */
+    async createCheckpoint(gameState, options = {}) {
+        const config = {
+            triggerType: 'MANUAL',
+            priority: 'normal',
+            validate: true,
+            compress: true,
+            metadata: {},
+            ...options
+        };
+
+        // Performance check - avoid checkpoints during rapid changes
+        if (!this._shouldCreateCheckpoint(config)) {
+            return null;
+        }
+
+        const startTime = performance.now();
+        this.checkpointInProgress = true;
+
+        try {
+            // Validate state before checkpoint
+            if (config.validate && !await this._validateStateForCheckpoint(gameState)) {
+                console.warn('SaveManager: Checkpoint validation failed, skipping');
+                return null;
+            }
+
+            // Generate checkpoint ID
+            const checkpointId = this._generateCheckpointId(config.triggerType);
+
+            // Create checkpoint data structure
+            const checkpoint = await this._createCheckpointData(gameState, checkpointId, config);
+
+            // Store checkpoint
+            await this._storeCheckpoint(checkpoint);
+
+            // Update checkpoint tracking
+            this._updateCheckpointTracking(checkpoint);
+
+            // Cleanup old checkpoints if needed
+            await this._maintainCheckpointStorage();
+
+            const duration = performance.now() - startTime;
+            console.log(`Checkpoint ${checkpointId} created in ${duration.toFixed(2)}ms`);
+
+            this.stats.checkpointsCreated++;
+            this.lastCheckpointTime = Date.now();
+
+            return checkpointId;
+
+        } catch (error) {
+            console.error('SaveManager: Checkpoint creation failed:', error);
+            this.stats.totalFailures++;
+            return null;
+        } finally {
+            this.checkpointInProgress = false;
+        }
+    }
+
+    /**
+     * Create automatic checkpoint based on game events
+     * @param {Object} gameState - Current game state
+     * @param {string} eventType - Type of event triggering checkpoint
+     * @param {Object} eventData - Additional event data
+     * @returns {Promise<string|null>} Checkpoint ID or null
+     */
+    async createAutomaticCheckpoint(gameState, eventType, eventData = {}) {
+        const triggerTypes = {
+            'level_up': 'MILESTONE',
+            'stage_advance': 'MILESTONE',
+            'major_purchase': 'MILESTONE',
+            'achievement_unlock': 'MILESTONE',
+            'prestige': 'MILESTONE',
+            'error_recovery': 'ERROR_RECOVERY',
+            'before_risky_operation': 'ERROR_RECOVERY',
+            'interval': 'AUTO'
+        };
+
+        const triggerType = triggerTypes[eventType] || 'AUTO';
+        const priority = triggerType === 'MILESTONE' ? 'high' : 'normal';
+
+        return await this.createCheckpoint(gameState, {
+            triggerType,
+            priority,
+            metadata: {
+                eventType,
+                eventData,
+                automated: true
+            }
+        });
+    }
+
+    /**
+     * Rollback to a specific checkpoint
+     * @param {string} checkpointId - ID of checkpoint to rollback to
+     * @param {Object} options - Rollback options
+     * @returns {Promise<Object|null>} Restored state or null if failed
+     */
+    async rollbackToCheckpoint(checkpointId, options = {}) {
+        const config = {
+            validate: true,
+            createBackup: true,
+            strategy: 'full', // 'full', 'partial', 'progressive'
+            confirmationRequired: false,
+            ...options
+        };
+
+        const startTime = performance.now();
+
+        try {
+            // Get checkpoint data
+            const checkpoint = await this._getCheckpoint(checkpointId);
+            if (!checkpoint) {
+                throw new Error(`Checkpoint ${checkpointId} not found`);
+            }
+
+            // Validate checkpoint integrity
+            if (config.validate && !await this._validateCheckpoint(checkpoint)) {
+                throw new Error(`Checkpoint ${checkpointId} is corrupted`);
+            }
+
+            // Check if confirmation is required for major rollbacks
+            if (config.confirmationRequired && this._requiresConfirmation(checkpoint)) {
+                const confirmed = await this._requestRollbackConfirmation(checkpoint);
+                if (!confirmed) {
+                    console.log('Rollback cancelled by user');
+                    return null;
+                }
+            }
+
+            // Create rollback backup of current state
+            let rollbackBackup = null;
+            if (config.createBackup) {
+                rollbackBackup = await this._createRollbackBackup();
+            }
+
+            try {
+                // Perform the rollback
+                const restoredState = await this._performRollback(checkpoint, config);
+
+                // Validate restored state
+                if (config.validate && !await this._validateRestoredState(restoredState)) {
+                    throw new Error('Restored state validation failed');
+                }
+
+                // Log successful rollback
+                this._logRollback(checkpoint, 'SUCCESS', rollbackBackup);
+
+                const duration = performance.now() - startTime;
+                console.log(`Rollback to ${checkpointId} completed in ${duration.toFixed(2)}ms`);
+
+                this.stats.rollbacksPerformed++;
+                return restoredState;
+
+            } catch (rollbackError) {
+                // Rollback failed, restore from backup if available
+                if (rollbackBackup) {
+                    console.warn('Rollback failed, restoring from backup:', rollbackError);
+                    await this._restoreFromRollbackBackup(rollbackBackup);
+                }
+                throw rollbackError;
+            }
+
+        } catch (error) {
+            console.error('SaveManager: Rollback failed:', error);
+            this.stats.totalFailures++;
+            return null;
+        }
+    }
+
+    /**
+     * Get list of available checkpoints
+     * @param {Object} filters - Optional filters for checkpoints
+     * @returns {Array} Array of checkpoint metadata
+     */
+    getAvailableCheckpoints(filters = {}) {
+        const checkpoints = Array.from(this.checkpoints.values());
+
+        return checkpoints
+            .filter(checkpoint => this._matchesFilters(checkpoint, filters))
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .map(checkpoint => ({
+                id: checkpoint.id,
+                timestamp: checkpoint.timestamp,
+                triggerType: checkpoint.triggerType,
+                gameVersion: checkpoint.gameVersion,
+                size: checkpoint.compressedSize || checkpoint.originalSize,
+                metadata: checkpoint.metadata,
+                isValid: checkpoint.validation?.isValid || false,
+                isCritical: this.criticalCheckpoints.has(checkpoint.id)
+            }));
+    }
+
+    /**
+     * Delete a specific checkpoint
+     * @param {string} checkpointId - ID of checkpoint to delete
+     * @param {boolean} force - Force deletion even if critical
+     * @returns {boolean} Success status
+     */
+    async deleteCheckpoint(checkpointId, force = false) {
+        try {
+            // Check if it's a critical checkpoint
+            if (!force && this.criticalCheckpoints.has(checkpointId)) {
+                console.warn('Cannot delete critical checkpoint without force flag');
+                return false;
+            }
+
+            // Remove from storage
+            const storageKey = this._getCheckpointStorageKey(checkpointId);
+            this.storage.removeItem(storageKey);
+
+            // Remove from memory
+            this.checkpoints.delete(checkpointId);
+            this.criticalCheckpoints.delete(checkpointId);
+
+            console.log(`Checkpoint ${checkpointId} deleted`);
+            return true;
+
+        } catch (error) {
+            console.error('SaveManager: Failed to delete checkpoint:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Progressive rollback - try newer checkpoints first
+     * @param {Object} options - Rollback options
+     * @returns {Promise<Object|null>} Restored state or null
+     */
+    async progressiveRollback(options = {}) {
+        const checkpoints = this.getAvailableCheckpoints({
+            triggerType: options.triggerType,
+            maxAge: options.maxAge || this.checkpointConfig.retention.maxAge
+        });
+
+        for (const checkpointMeta of checkpoints) {
+            try {
+                console.log(`Attempting rollback to checkpoint ${checkpointMeta.id}`);
+                const restoredState = await this.rollbackToCheckpoint(checkpointMeta.id, {
+                    ...options,
+                    validate: true,
+                    createBackup: false // Don't create multiple backups
+                });
+
+                if (restoredState) {
+                    console.log(`Progressive rollback successful with checkpoint ${checkpointMeta.id}`);
+                    return restoredState;
+                }
+            } catch (error) {
+                console.warn(`Checkpoint ${checkpointMeta.id} failed, trying next:`, error);
+                continue;
+            }
+        }
+
+        console.error('Progressive rollback failed - no valid checkpoints found');
+        return null;
+    }
+
+    // ===== CHECKPOINT PRIVATE METHODS =====
+
+    /**
+     * Load existing checkpoints from storage
+     */
+    _loadExistingCheckpoints() {
+        try {
+            const checkpointPrefix = this.storagePrefix + 'checkpoint_';
+            for (let i = 0; i < this.storage.length; i++) {
+                const key = this.storage.key(i);
+                if (key && key.startsWith(checkpointPrefix)) {
+                    const checkpointData = this.storage.getItem(key);
+                    if (checkpointData) {
+                        const checkpoint = JSON.parse(checkpointData);
+                        this.checkpoints.set(checkpoint.id, checkpoint);
+
+                        // Mark as critical if it's a milestone checkpoint
+                        if (checkpoint.triggerType === 'MILESTONE' || checkpoint.priority === 'high') {
+                            this.criticalCheckpoints.add(checkpoint.id);
+                        }
+                    }
+                }
+            }
+            console.log(`Loaded ${this.checkpoints.size} existing checkpoints`);
+        } catch (error) {
+            console.error('Failed to load existing checkpoints:', error);
+        }
+    }
+
+    /**
+     * Set up automatic checkpoint intervals
+     */
+    _setupAutomaticCheckpointing() {
+        // Set up interval-based checkpointing
+        if (this.checkpointConfig.intervals.auto > 0) {
+            setInterval(() => {
+                if (window.game && window.game.gameState && this.isEnabled) {
+                    this.createAutomaticCheckpoint(window.game.gameState.exportState(), 'interval');
+                }
+            }, this.checkpointConfig.intervals.auto);
+        }
+    }
+
+    /**
+     * Get checkpoint storage key
+     */
+    _getCheckpointStorageKey(checkpointId) {
+        return this.storagePrefix + 'checkpoint_' + checkpointId;
+    }
+
+    /**
+     * Check if a checkpoint should be created based on timing and performance
+     */
+    _shouldCreateCheckpoint(config) {
+        const now = Date.now();
+
+        // Check minimum interval between checkpoints
+        if (now - this.lastCheckpointTime < this.checkpointConfig.performance.minInterval) {
+            return false;
+        }
+
+        // Don't create checkpoint if one is already in progress
+        if (this.checkpointInProgress) {
+            return false;
+        }
+
+        // Allow high priority checkpoints to bypass some restrictions
+        if (config.priority === 'high' || config.triggerType === 'ERROR_RECOVERY') {
+            return true;
+        }
+
+        // Check if system is under heavy load
+        if (this._isSystemUnderLoad()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate game state before creating checkpoint
+     */
+    async _validateStateForCheckpoint(gameState) {
+        try {
+            // Basic null/undefined check
+            if (!gameState || typeof gameState !== 'object') {
+                return false;
+            }
+
+            // Use data validator if available
+            if (typeof window !== 'undefined' && window.dataValidator) {
+                const validation = window.dataValidator.validateGameState(gameState, {
+                    sanitize: false,
+                    strict: this.checkpointConfig.validation.strictMode
+                });
+
+                if (!validation.isValid) {
+                    console.warn('Checkpoint validation failed:', validation.errors);
+                    return this.checkpointConfig.validation.autoRepair && validation.isRepairable;
+                }
+            }
+
+            // Check for basic corruption indicators
+            return this._checkBasicStateIntegrity(gameState);
+        } catch (error) {
+            console.error('State validation failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Check basic state integrity
+     */
+    _checkBasicStateIntegrity(gameState) {
+        try {
+            // Check for circular references
+            JSON.stringify(gameState);
+
+            // Check for NaN/Infinity values in numeric fields
+            const checkForBadNumbers = (obj, path = '') => {
+                for (const [key, value] of Object.entries(obj)) {
+                    if (typeof value === 'number') {
+                        if (isNaN(value) || !isFinite(value)) {
+                            console.warn(`Bad number found at ${path}.${key}:`, value);
+                            return false;
+                        }
+                    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+                        if (!checkForBadNumbers(value, `${path}.${key}`)) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            };
+
+            return checkForBadNumbers(gameState);
+        } catch (error) {
+            console.error('Basic integrity check failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Generate unique checkpoint ID
+     */
+    _generateCheckpointId(triggerType) {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 8);
+        return `checkpoint_${timestamp}_${triggerType}_${random}`;
+    }
+
+    /**
+     * Create checkpoint data structure
+     */
+    async _createCheckpointData(gameState, checkpointId, config) {
+        const timestamp = Date.now();
+
+        // Create checkpoint structure
+        const checkpoint = {
+            id: checkpointId,
+            timestamp: timestamp,
+            gameVersion: this._getCurrentVersion(),
+            triggerType: config.triggerType,
+            priority: config.priority,
+
+            // Core game state (deep clone to avoid mutations)
+            gameState: JSON.parse(JSON.stringify(gameState)),
+
+            // Metadata
+            metadata: {
+                ...config.metadata,
+                createdAt: timestamp,
+                size: 0,
+                compressed: false
+            },
+
+            // Validation info
+            validation: {
+                isValid: true,
+                checksum: await this._generateChecksum(gameState),
+                checks: ['integrity', 'consistency'],
+                errors: []
+            }
+        };
+
+        // Calculate sizes
+        const serialized = JSON.stringify(checkpoint);
+        checkpoint.originalSize = serialized.length;
+
+        // Apply compression if enabled
+        if (config.compress) {
+            const compressed = await this._compress(serialized);
+            if (compressed.length < serialized.length) {
+                checkpoint.compressed = true;
+                checkpoint.compressedSize = compressed.length;
+                checkpoint.compressionRatio = compressed.length / serialized.length;
+            }
+        }
+
+        return checkpoint;
+    }
+
+    /**
+     * Store checkpoint to storage
+     */
+    async _storeCheckpoint(checkpoint) {
+        const storageKey = this._getCheckpointStorageKey(checkpoint.id);
+        let dataToStore = JSON.stringify(checkpoint);
+
+        // Apply compression if marked as compressed
+        if (checkpoint.compressed) {
+            dataToStore = await this._compress(dataToStore);
+        }
+
+        // Handle chunking for large checkpoints
+        if (dataToStore.length > this.maxChunkSize) {
+            await this._storeCheckpointChunked(checkpoint.id, dataToStore);
+        } else {
+            this.storage.setItem(storageKey, dataToStore);
+        }
+
+        // Store in memory for quick access
+        this.checkpoints.set(checkpoint.id, checkpoint);
+    }
+
+    /**
+     * Store large checkpoint using chunking
+     */
+    async _storeCheckpointChunked(checkpointId, data) {
+        const chunks = this._createChunks(data, this.maxChunkSize);
+        const chunkPrefix = this._getCheckpointStorageKey(checkpointId) + '_chunk_';
+
+        // Store chunks
+        for (let i = 0; i < chunks.length; i++) {
+            this.storage.setItem(chunkPrefix + i, chunks[i]);
+        }
+
+        // Store metadata
+        const metadata = {
+            chunked: true,
+            chunkCount: chunks.length,
+            totalSize: data.length
+        };
+        this.storage.setItem(this._getCheckpointStorageKey(checkpointId), JSON.stringify(metadata));
+    }
+
+    /**
+     * Update checkpoint tracking
+     */
+    _updateCheckpointTracking(checkpoint) {
+        // Mark as critical if it's a milestone
+        if (checkpoint.triggerType === 'MILESTONE' || checkpoint.priority === 'high') {
+            this.criticalCheckpoints.add(checkpoint.id);
+        }
+
+        // Update rollback stack (keep last 5 for quick access)
+        this.rollbackStack.push({
+            id: checkpoint.id,
+            timestamp: checkpoint.timestamp,
+            triggerType: checkpoint.triggerType
+        });
+
+        if (this.rollbackStack.length > 5) {
+            this.rollbackStack.shift();
+        }
+    }
+
+    /**
+     * Maintain checkpoint storage by cleaning up if needed
+     */
+    async _maintainCheckpointStorage() {
+        // Check if we exceed count limits
+        if (this.checkpoints.size > this.checkpointConfig.retention.count) {
+            await this._cleanupOldCheckpoints();
+        }
+
+        // Check storage quota if available
+        const usage = this.getStorageInfo().usage;
+        if (usage && usage.usagePercent > 80) {
+            console.warn('Storage usage high, cleaning up old checkpoints');
+            await this._cleanupOldCheckpoints();
+        }
+    }
+
+    /**
+     * Clean up old checkpoints based on retention policy
+     */
+    async _cleanupOldCheckpoints() {
+        try {
+            const now = Date.now();
+            const maxAge = this.checkpointConfig.retention.maxAge;
+            const maxCount = this.checkpointConfig.retention.count;
+            const criticalKeep = this.checkpointConfig.retention.criticalKeep;
+
+            const checkpoints = Array.from(this.checkpoints.values());
+
+            // Sort by timestamp (newest first)
+            checkpoints.sort((a, b) => b.timestamp - a.timestamp);
+
+            let criticalCount = 0;
+            const toDelete = [];
+
+            for (let i = 0; i < checkpoints.length; i++) {
+                const checkpoint = checkpoints[i];
+                const age = now - checkpoint.timestamp;
+                const isCritical = this.criticalCheckpoints.has(checkpoint.id);
+
+                // Keep critical checkpoints up to limit
+                if (isCritical && criticalCount < criticalKeep) {
+                    criticalCount++;
+                    continue;
+                }
+
+                // Delete if too old or beyond count limit
+                if (age > maxAge || i >= maxCount) {
+                    toDelete.push(checkpoint.id);
+                }
+            }
+
+            // Delete marked checkpoints
+            for (const checkpointId of toDelete) {
+                await this.deleteCheckpoint(checkpointId, false);
+            }
+
+            if (toDelete.length > 0) {
+                console.log(`Cleaned up ${toDelete.length} old checkpoints`);
+            }
+        } catch (error) {
+            console.error('Failed to cleanup old checkpoints:', error);
+        }
+    }
+
+    /**
+     * Get checkpoint from storage or memory
+     */
+    async _getCheckpoint(checkpointId) {
+        // Try memory first
+        if (this.checkpoints.has(checkpointId)) {
+            return this.checkpoints.get(checkpointId);
+        }
+
+        // Load from storage
+        try {
+            const storageKey = this._getCheckpointStorageKey(checkpointId);
+            const data = this.storage.getItem(storageKey);
+
+            if (!data) {
+                return null;
+            }
+
+            // Parse checkpoint data
+            let checkpoint;
+            try {
+                checkpoint = JSON.parse(data);
+            } catch (parseError) {
+                // Might be compressed data
+                const decompressed = await this._decompress(data);
+                checkpoint = JSON.parse(decompressed);
+            }
+
+            // Store in memory for future access
+            if (checkpoint) {
+                this.checkpoints.set(checkpointId, checkpoint);
+            }
+
+            return checkpoint;
+        } catch (error) {
+            console.error(`Failed to load checkpoint ${checkpointId}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Validate checkpoint integrity
+     */
+    async _validateCheckpoint(checkpoint) {
+        try {
+            // Basic structure validation
+            if (!checkpoint.id || !checkpoint.gameState || !checkpoint.validation) {
+                return false;
+            }
+
+            // Checksum validation
+            if (checkpoint.validation.checksum) {
+                const computedChecksum = await this._generateChecksum(checkpoint.gameState);
+                if (computedChecksum !== checkpoint.validation.checksum) {
+                    console.warn(`Checkpoint ${checkpoint.id} checksum mismatch`);
+                    this.stats.corruptedCheckpoints++;
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Checkpoint validation failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Check if checkpoint matches filters
+     */
+    _matchesFilters(checkpoint, filters) {
+        if (filters.triggerType && checkpoint.triggerType !== filters.triggerType) {
+            return false;
+        }
+
+        if (filters.maxAge && (Date.now() - checkpoint.timestamp) > filters.maxAge) {
+            return false;
+        }
+
+        if (filters.minTimestamp && checkpoint.timestamp < filters.minTimestamp) {
+            return false;
+        }
+
+        if (filters.priority && checkpoint.priority !== filters.priority) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if rollback requires user confirmation
+     */
+    _requiresConfirmation(checkpoint) {
+        const now = Date.now();
+        const timeLoss = now - checkpoint.timestamp;
+        const oneHour = 60 * 60 * 1000;
+
+        // Require confirmation for rollbacks losing more than 1 hour
+        return timeLoss > oneHour;
+    }
+
+    /**
+     * Request user confirmation for major rollback
+     */
+    async _requestRollbackConfirmation(checkpoint) {
+        const timeLoss = Date.now() - checkpoint.timestamp;
+        const hours = Math.floor(timeLoss / (60 * 60 * 1000));
+        const minutes = Math.floor((timeLoss % (60 * 60 * 1000)) / (60 * 1000));
+
+        const message = `This rollback will lose ${hours}h ${minutes}m of progress. Continue?`;
+
+        return new Promise((resolve) => {
+            if (confirm(message)) {
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        });
+    }
+
+    /**
+     * Create rollback backup of current state
+     */
+    async _createRollbackBackup() {
+        try {
+            if (window.game && window.game.gameState) {
+                const currentState = window.game.gameState.exportState();
+                const backupId = `rollback_backup_${Date.now()}`;
+
+                const backup = {
+                    id: backupId,
+                    timestamp: Date.now(),
+                    gameState: currentState,
+                    type: 'rollback_backup'
+                };
+
+                // Store temporarily
+                const storageKey = this.storagePrefix + backupId;
+                this.storage.setItem(storageKey, JSON.stringify(backup));
+
+                return backupId;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to create rollback backup:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Perform the actual rollback operation
+     */
+    async _performRollback(checkpoint, config) {
+        try {
+            const restoredState = JSON.parse(JSON.stringify(checkpoint.gameState));
+            return restoredState;
+        } catch (error) {
+            throw new Error(`Rollback operation failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Validate restored state after rollback
+     */
+    async _validateRestoredState(restoredState) {
+        return await this._validateStateForCheckpoint(restoredState);
+    }
+
+    /**
+     * Log rollback operation
+     */
+    _logRollback(checkpoint, status, backupId = null) {
+        const rollbackLog = {
+            timestamp: Date.now(),
+            checkpointId: checkpoint.id,
+            checkpointTimestamp: checkpoint.timestamp,
+            status: status,
+            backupId: backupId,
+            timeLoss: Date.now() - checkpoint.timestamp
+        };
+
+        console.log('Rollback operation logged:', rollbackLog);
+
+        // Store in session for debugging
+        try {
+            const existing = JSON.parse(sessionStorage.getItem('rollbackLog') || '[]');
+            existing.push(rollbackLog);
+            sessionStorage.setItem('rollbackLog', JSON.stringify(existing.slice(-20))); // Keep last 20
+        } catch (e) {
+            // Ignore storage errors
+        }
+    }
+
+    /**
+     * Restore from rollback backup
+     */
+    async _restoreFromRollbackBackup(backupId) {
+        try {
+            const storageKey = this.storagePrefix + backupId;
+            const backupData = this.storage.getItem(storageKey);
+
+            if (backupData) {
+                const backup = JSON.parse(backupData);
+
+                // Clean up backup after use
+                this.storage.removeItem(storageKey);
+
+                return backup.gameState;
+            }
+
+            throw new Error('Rollback backup not found');
+        } catch (error) {
+            throw new Error(`Failed to restore from rollback backup: ${error.message}`);
+        }
+    }
+
+    /**
+     * Check if system is under heavy load
+     */
+    _isSystemUnderLoad() {
+        try {
+            // Check memory usage if available
+            if (performance.memory) {
+                const memoryUsage = performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit;
+                if (memoryUsage > 0.9) {
+                    return true;
+                }
+            }
+
+            // Check if there are many pending save operations
+            if (this.saveQueue.length > 5) {
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            // Assume not under load if we can't check
+            return false;
+        }
     }
 
     // Private methods
