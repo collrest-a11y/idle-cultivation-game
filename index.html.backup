@@ -753,21 +753,10 @@
 
     <!-- Production Configuration -->
     <script src="production-config.js"></script>
-    <script src="src/config/production.js"></script>
-
-    <!-- Production Error Handling System -->
-    <script src="src/production/ProductionMonitor.js"></script>
-    <script src="src/security/ErrorSecurity.js"></script>
-    <script src="src/analytics/ProductionAnalytics.js"></script>
 
     <!-- Core Game Engine -->
     <script src="js/core/EventManager.js"></script>
     <script src="js/core/ErrorManager.js"></script>
-    <script src="js/core/ErrorProcessor.js"></script>
-    <script src="js/core/ErrorClassifier.js"></script>
-    <script src="js/core/ErrorPatterns.js"></script>
-    <script src="js/core/ErrorRecovery.js"></script>
-    <script src="js/core/ClassificationRules.js"></script>
     <script src="js/utils/ErrorAnalytics.js"></script>
     <script src="js/ui/ErrorDashboard.js"></script>
     <script src="js/core/SafeMode.js"></script>
