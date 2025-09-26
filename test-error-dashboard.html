@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Dashboard Test</title>
+    <link rel="stylesheet" href="css/error-dashboard.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1f25;
+            color: #ecf0f1;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .test-controls {
+            background: #2c3e50;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .test-btn {
+            padding: 0.5rem 1rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .test-btn:hover {
+            background: #2980b9;
+        }
+
+        .test-btn.success {
+            background: #27ae60;
+        }
+
+        .test-btn.error {
+            background: #e74c3c;
+        }
+
+        .test-btn.warning {
+            background: #f39c12;
+        }
+
+        .status {
+            background: #34495e;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .status h3 {
+            margin: 0 0 0.5rem 0;
+            color: #3498db;
+        }
+
+        .log {
+            background: #1a1f25;
+            padding: 1rem;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            border: 1px solid #34495e;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Error Dashboard Test Environment</h1>
+
+    <div class="status">
+        <h3>Dashboard Status</h3>
+        <div id="dashboard-status">Initializing...</div>
+    </div>
+
+    <div class="test-controls">
+        <button class="test-btn" onclick="toggleDashboard()">Toggle Dashboard (Ctrl+Shift+E)</button>
+        <button class="test-btn error" onclick="generateError('critical')">Generate Critical Error</button>
+        <button class="test-btn warning" onclick="generateError('warning')">Generate Warning</button>
+        <button class="test-btn" onclick="generateError('info')">Generate Info</button>
+        <button class="test-btn success" onclick="generateBulkErrors()">Generate 20 Errors</button>
+        <button class="test-btn" onclick="clearErrors()">Clear All Errors</button>
+        <button class="test-btn" onclick="runTests()">Run Test Suite</button>
+        <button class="test-btn" onclick="exportTestReport()">Export Test Report</button>
+    </div>
+
+    <div class="status">
+        <h3>Test Log</h3>
+        <div class="log" id="test-log"></div>
+    </div>
+
+    <!-- Core Dependencies -->
+    <script src="js/utils/ErrorAnalytics.js"></script>
+    <script src="js/ui/ErrorDashboard.js"></script>
+    <script src="js/tests/ErrorDashboard.test.js"></script>
+
+    <script>
+        // Mock ErrorManager for testing
+        class MockErrorManager {
+            constructor() {
+                this.errors = [];
+                this.config = { maxLogEntries: 1000 };
+            }
+
+            getErrorLog() {
+                return this.errors;
+            }
+
+            clearErrorLog() {
+                this.errors = [];
+                log('ErrorManager: Errors cleared');
+            }
+
+            suppressError(message) {
+                log(`ErrorManager: Suppressed error: ${message}`);
+            }
+
+            attemptRecovery(error) {
+                log(`ErrorManager: Recovery attempted for: ${error.message}`);
+                error.recovered = true;
+                error.recoveryTime = Date.now();
+            }
+
+            reportError(error) {
+                this.errors.push(error);
+                log(`ErrorManager: Error reported: ${error.message}`);
+            }
+        }
+
+        // Global variables
+        let errorManager;
+        let errorAnalytics;
+        let errorDashboard;
+        let errorCounter = 0;
+
+        // Logging function
+        function log(message) {
+            const logElement = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        // Initialize dashboard
+        async function initializeDashboard() {
+            try {
+                log('Initializing Error Dashboard...');
+
+                // Create instances
+                errorManager = new MockErrorManager();
+                errorAnalytics = new ErrorAnalytics();
+                errorDashboard = new ErrorDashboard();
+
+                // Force developer mode
+                Object.defineProperty(errorDashboard, 'checkDeveloperMode', {
+                    value: () => true
+                });
+
+                // Initialize dashboard
+                await errorDashboard.initialize(errorManager, errorAnalytics);
+
+                // Connect analytics to error manager
+                const originalReportError = errorManager.reportError.bind(errorManager);
+                errorManager.reportError = (error) => {
+                    originalReportError(error);
+                    errorAnalytics.recordError(error);
+                };
+
+                // Make globally accessible
+                window.errorManager = errorManager;
+                window.errorAnalytics = errorAnalytics;
+                window.errorDashboard = errorDashboard;
+
+                updateStatus('Dashboard initialized successfully');
+                log('✅ Dashboard initialization complete');
+
+            } catch (error) {
+                updateStatus(`Initialization failed: ${error.message}`);
+                log(`❌ Dashboard initialization failed: ${error.message}`);
+            }
+        }
+
+        // Update status display
+        function updateStatus(message) {
+            document.getElementById('dashboard-status').textContent = message;
+        }
+
+        // Toggle dashboard visibility
+        function toggleDashboard() {
+            if (errorDashboard) {
+                errorDashboard.toggle();
+                const isActive = errorDashboard.isActive;
+                updateStatus(`Dashboard ${isActive ? 'shown' : 'hidden'}`);
+                log(`Dashboard ${isActive ? 'shown' : 'hidden'}`);
+            }
+        }
+
+        // Generate test errors
+        function generateError(severity = 'error') {
+            if (!errorManager) return;
+
+            errorCounter++;
+            const categories = ['ui', 'network', 'storage', 'performance', 'validation'];
+            const messages = [
+                'Database connection failed',
+                'User authentication error',
+                'File not found',
+                'Memory allocation failed',
+                'Network timeout occurred',
+                'Invalid input provided',
+                'Permission denied',
+                'Resource not available',
+                'Parsing error occurred',
+                'Configuration invalid'
+            ];
+
+            const error = {
+                id: `test-error-${errorCounter}`,
+                timestamp: Date.now(),
+                severity: severity,
+                category: categories[Math.floor(Math.random() * categories.length)],
+                message: messages[Math.floor(Math.random() * messages.length)],
+                source: `test-file-${Math.floor(Math.random() * 10)}.js:${Math.floor(Math.random() * 100)}`,
+                stack: `Error: Test error ${errorCounter}\n    at testFunction (test-file.js:${Math.floor(Math.random() * 100)})\n    at main (test-file.js:${Math.floor(Math.random() * 100)})`,
+                context: {
+                    userAction: 'test-action',
+                    timestamp: Date.now(),
+                    url: window.location.href
+                }
+            };
+
+            errorManager.reportError(error);
+            log(`Generated ${severity} error: ${error.message}`);
+        }
+
+        // Generate bulk errors for testing
+        function generateBulkErrors() {
+            log('Generating 20 test errors...');
+            const severities = ['critical', 'error', 'warning', 'info'];
+
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const severity = severities[Math.floor(Math.random() * severities.length)];
+                    generateError(severity);
+                }, i * 100); // Stagger the errors
+            }
+        }
+
+        // Clear all errors
+        function clearErrors() {
+            if (errorManager) {
+                errorManager.clearErrorLog();
+                if (errorDashboard) {
+                    errorDashboard.clearErrors();
+                }
+                log('All errors cleared');
+            }
+        }
+
+        // Run test suite
+        async function runTests() {
+            if (typeof ErrorDashboardTestSuite === 'undefined') {
+                log('❌ Test suite not available');
+                return;
+            }
+
+            log('🧪 Starting test suite...');
+            updateStatus('Running tests...');
+
+            try {
+                const report = await runErrorDashboardTests();
+                const passRate = report.summary.passRate;
+                const emoji = passRate >= 90 ? '🎉' : passRate >= 75 ? '👍' : '⚠️';
+
+                updateStatus(`Tests complete: ${passRate}% pass rate ${emoji}`);
+                log(`Test suite completed with ${passRate}% pass rate`);
+                log(`${report.summary.passedTests}/${report.summary.totalTests} tests passed`);
+
+            } catch (error) {
+                updateStatus(`Test run failed: ${error.message}`);
+                log(`❌ Test run failed: ${error.message}`);
+            }
+        }
+
+        // Export test report
+        function exportTestReport() {
+            if (window.errorDashboardTestReport) {
+                const report = window.errorDashboardTestReport;
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `error-dashboard-test-report-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                log('Test report exported');
+            } else {
+                log('No test report available. Run tests first.');
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            if (event.ctrlKey && event.shiftKey && event.key === 'E') {
+                event.preventDefault();
+                toggleDashboard();
+            }
+        });
+
+        // Auto-generate some sample errors on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (errorManager) {
+                    generateError('critical');
+                    setTimeout(() => generateError('warning'), 500);
+                    setTimeout(() => generateError('info'), 1000);
+                    log('Sample errors generated');
+                }
+            }, 1000);
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+    </script>
+</body>
+</html>

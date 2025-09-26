@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/skills.css">
     <link rel="stylesheet" href="css/mobile.css">
     <link rel="stylesheet" href="css/debug-dashboard.css">
+    <link rel="stylesheet" href="css/error-dashboard.css">
 
     <!-- Inline Loading & Error Styles - Load immediately, no external dependencies -->
     <style>
@@ -756,6 +757,8 @@
     <!-- Core Game Engine -->
     <script src="js/core/EventManager.js"></script>
     <script src="js/core/ErrorManager.js"></script>
+    <script src="js/utils/ErrorAnalytics.js"></script>
+    <script src="js/ui/ErrorDashboard.js"></script>
     <script src="js/core/SafeMode.js"></script>
     <script src="js/core/GameState.js"></script>
 
@@ -849,6 +852,7 @@
     <!-- Test Suites -->
     <script src="js/tests/test-state-validation.js"></script>
     <script src="js/tests/save-system-integration-tests.js"></script>
+    <script src="js/tests/ErrorDashboard.test.js"></script>
 
     <!-- Main Game Entry Point -->
     <script src="js/main.js"></script>
