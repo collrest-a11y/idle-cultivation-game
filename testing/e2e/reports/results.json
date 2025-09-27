@@ -1,0 +1,226 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\playwright.config.cjs",
+    "rootDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\testing\\e2e\\global-setup.js",
+    "globalTeardown": "C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\testing\\e2e\\global-teardown.js",
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 1,
+    "metadata": {
+      "test-suite-version": "1.0.0",
+      "error-handling-suite": true,
+      "issue": "149",
+      "epic": "real-error-handler"
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "testing/e2e/reports/html"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "testing/e2e/reports/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "testing/e2e/reports/junit.xml"
+        }
+      ],
+      [
+        "line",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "test-suite-version": "1.0.0",
+          "error-handling-suite": true,
+          "issue": "149",
+          "epic": "real-error-handler"
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "test-suite-version": "1.0.0",
+          "error-handling-suite": true,
+          "issue": "149",
+          "epic": "real-error-handler"
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "test-suite-version": "1.0.0",
+          "error-handling-suite": true,
+          "issue": "149",
+          "epic": "real-error-handler"
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "test-suite-version": "1.0.0",
+          "error-handling-suite": true,
+          "issue": "149",
+          "epic": "real-error-handler"
+        },
+        "id": "mobile-chrome",
+        "name": "mobile-chrome",
+        "testDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "test-suite-version": "1.0.0",
+          "error-handling-suite": true,
+          "issue": "149",
+          "epic": "real-error-handler"
+        },
+        "id": "mobile-safari",
+        "name": "mobile-safari",
+        "testDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "test-suite-version": "1.0.0",
+          "error-handling-suite": true,
+          "issue": "149",
+          "epic": "real-error-handler"
+        },
+        "id": "error-handling-chrome",
+        "name": "error-handling-chrome",
+        "testDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e/error-handling",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "test-suite-version": "1.0.0",
+          "error-handling-suite": true,
+          "issue": "149",
+          "epic": "real-error-handler"
+        },
+        "id": "error-handling-firefox",
+        "name": "error-handling-firefox",
+        "testDir": "C:/Users/Brendan/Documents/GitHub/epic-real-error-handler/tests/e2e/error-handling",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.55.1",
+    "workers": 12,
+    "webServer": {
+      "command": "npx http-server . -p 8080 -s",
+      "port": 8080,
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.",
+      "stack": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\n    at C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\testing\\e2e\\global-setup.js:6:12",
+      "location": {
+        "file": "C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\testing\\e2e\\global-setup.js",
+        "column": 12,
+        "line": 6
+      },
+      "snippet": "\u001b[90m   at \u001b[39m..\\..\\testing\\e2e\\global-setup.js:6\n\n\u001b[0m \u001b[90m 4 |\u001b[39m \u001b[90m */\u001b[39m\n \u001b[90m 5 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 6 |\u001b[39m \u001b[36mconst\u001b[39m fs \u001b[33m=\u001b[39m require(\u001b[32m'fs'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 7 |\u001b[39m \u001b[36mconst\u001b[39m path \u001b[33m=\u001b[39m require(\u001b[32m'path'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 8 |\u001b[39m\n \u001b[90m 9 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m globalSetup() {\u001b[0m"
+    },
+    {
+      "message": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.",
+      "stack": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\n    at C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\testing\\e2e\\global-teardown.js:6:12",
+      "location": {
+        "file": "C:\\Users\\Brendan\\Documents\\GitHub\\epic-real-error-handler\\testing\\e2e\\global-teardown.js",
+        "column": 12,
+        "line": 6
+      },
+      "snippet": "\u001b[90m   at \u001b[39m..\\..\\testing\\e2e\\global-teardown.js:6\n\n\u001b[0m \u001b[90m 4 |\u001b[39m \u001b[90m */\u001b[39m\n \u001b[90m 5 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 6 |\u001b[39m \u001b[36mconst\u001b[39m fs \u001b[33m=\u001b[39m require(\u001b[32m'fs'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 7 |\u001b[39m \u001b[36mconst\u001b[39m path \u001b[33m=\u001b[39m require(\u001b[32m'path'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 8 |\u001b[39m\n \u001b[90m 9 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m globalTeardown() {\u001b[0m"
+    }
+  ],
+  "stats": {
+    "startTime": "2025-09-26T17:15:57.505Z",
+    "duration": 141.49399999999991,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

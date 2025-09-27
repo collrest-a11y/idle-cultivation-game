@@ -26,7 +26,7 @@ export class LoopController {
       confidenceThreshold: config.confidenceThreshold || 70,
       autoApply: config.autoApply !== false,
       createReports: config.createReports !== false,
-      serverUrl: config.serverUrl || 'http://localhost:8080',
+      serverUrl: config.serverUrl || 'file:///' + process.cwd().replace(/\\/g, '/') + '/index.html',
       workingDir: config.workingDir || process.cwd(),
       ...config
     };

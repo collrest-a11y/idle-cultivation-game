@@ -1,0 +1,60 @@
+[
+  {
+    "timestamp": 1758846893202,
+    "system": {
+      "memory": {
+        "heapUsed": 22169016,
+        "heapTotal": 38629376,
+        "external": 2903373,
+        "rss": 90660864,
+        "heapUsedMB": 21,
+        "heapTotalMB": 37
+      },
+      "cpu": {
+        "user": 250000,
+        "system": 93000,
+        "userPercent": "0.25",
+        "systemPercent": "0.09"
+      },
+      "process": {
+        "pid": 61160,
+        "uptime": 0.4578251,
+        "version": "v22.19.0",
+        "platform": "win32"
+      },
+      "resourceUsage": {
+        "timestamp": 1758846893202,
+        "available": true,
+        "userCPUTime": 250000,
+        "systemCPUTime": 93000,
+        "maxRSS": 88540
+      }
+    },
+    "application": {
+      "validation": {
+        "activeIterations": 0,
+        "totalErrors": 0,
+        "fixQueue": 0,
+        "convergenceRate": 0
+      },
+      "performance": {
+        "avgIterationTime": 0,
+        "avgFixTime": 0,
+        "errorDetectionRate": 0,
+        "fixSuccessRate": 0
+      },
+      "errors": {
+        "byType": {},
+        "bySeverity": {},
+        "byComponent": {},
+        "recentTrend": "stable"
+      },
+      "fixes": {
+        "successful": 0,
+        "failed": 0,
+        "pending": 0,
+        "avgConfidence": 0
+      }
+    }
+  }
+]

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Error Collector</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #4ade80;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #4ade80;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .error-log {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .error-item {
+            background: #1a1a1a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 3px solid #f87171;
+        }
+
+        .error-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            color: #f87171;
+            font-weight: bold;
+        }
+
+        .error-time {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .error-details {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 10px;
+            padding: 10px;
+            background: #0a0a0a;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+
+        .error-stack {
+            margin-top: 10px;
+            padding: 10px;
+            background: #0a0a0a;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #666;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #4ade80;
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button.secondary {
+            background: #60a5fa;
+        }
+
+        button.danger {
+            background: #f87171;
+        }
+
+        .copy-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .copy-content {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+
+        .instruction {
+            background: #2a3a4a;
+            border-left: 3px solid #60a5fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #2a2a2a;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .user-actions {
+            background: #1f1f1f;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            color: #60a5fa;
+        }
+
+        .action-item {
+            padding: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">
+        <span class="status-dot"></span>
+        <span>Collecting Errors</span>
+    </div>
+
+    <div class="container">
+        <h1>🤖 Claude Error Collector</h1>
+        <p class="subtitle">Collects errors from your game for Claude to fix directly in our conversation</p>
+
+        <div class="instruction">
+            <strong>📝 How to use:</strong>
+            <ol>
+                <li>Open your game in another tab/window</li>
+                <li>Errors will automatically appear here</li>
+                <li>Click "Copy for Claude" to get a formatted error report</li>
+                <li>Paste it in our conversation and I'll fix it!</li>
+            </ol>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="errorCount">0</div>
+                <div class="stat-label">Total Errors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uniqueErrors">0</div>
+                <div class="stat-label">Unique Errors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="sessionTime">0:00</div>
+                <div class="stat-label">Session Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lastError">Never</div>
+                <div class="stat-label">Last Error</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="copyForClaude()">📋 Copy for Claude</button>
+            <button onclick="createPMIssue()" class="secondary">📝 Create PM Issue</button>
+            <button onclick="clearErrors()" class="danger">🗑️ Clear All</button>
+            <button onclick="downloadErrors()" class="secondary">💾 Download JSON</button>
+            <button onclick="toggleAutoScroll()" class="secondary" id="autoScrollBtn">📜 Auto-Scroll: ON</button>
+        </div>
+
+        <div class="error-log">
+            <h2>📊 Captured Errors</h2>
+            <div id="errorList">
+                <p style="color: #666; text-align: center; padding: 20px;">No errors yet. Open your game to start collecting!</p>
+            </div>
+        </div>
+
+        <div class="copy-section" id="copySection" style="display: none;">
+            <h2>📋 Copy this to Claude:</h2>
+            <div class="copy-content" id="copyContent"></div>
+            <button onclick="copyToClipboard()">Copy to Clipboard</button>
+        </div>
+    </div>
+
+    <script>
+        // Error storage
+        let errors = [];
+        let uniqueErrorMap = new Map();
+        let sessionStart = Date.now();
+        let autoScroll = true;
+        let userActions = [];
+
+        // Update session timer
+        setInterval(() => {
+            const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('sessionTime').textContent =
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        // Listen for errors from the game
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'game-error') {
+                captureError(event.data.error);
+            } else if (event.data.type === 'user-action') {
+                userActions.push(event.data.action);
+                if (userActions.length > 20) userActions.shift();
+            }
+        });
+
+        function captureError(error) {
+            // Add to errors list
+            errors.push({
+                ...error,
+                id: errors.length + 1,
+                timestamp: new Date().toISOString()
+            });
+
+            // Track unique errors
+            const errorKey = `${error.message}-${error.file}-${error.line}`;
+            uniqueErrorMap.set(errorKey, (uniqueErrorMap.get(errorKey) || 0) + 1);
+
+            // Update stats
+            updateStats();
+
+            // Display error
+            displayError(error);
+
+            // Auto-generate Claude format
+            generateClaudeFormat();
+        }
+
+        function updateStats() {
+            document.getElementById('errorCount').textContent = errors.length;
+            document.getElementById('uniqueErrors').textContent = uniqueErrorMap.size;
+            document.getElementById('lastError').textContent = 'Just now';
+        }
+
+        function displayError(error) {
+            const errorList = document.getElementById('errorList');
+
+            // Clear placeholder if this is first error
+            if (errors.length === 1) {
+                errorList.innerHTML = '';
+            }
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-item';
+            errorDiv.innerHTML = `
+                <div class="error-header">
+                    <span class="error-message">${escapeHtml(error.message || 'Unknown error')}</span>
+                    <span class="error-time">${new Date().toLocaleTimeString()}</span>
+                </div>
+                <div class="error-details">
+                    📁 File: ${error.file || 'unknown'}<br>
+                    📍 Line: ${error.line || '?'}, Column: ${error.column || '?'}
+                </div>
+                ${error.stack ? `<div class="error-stack">${escapeHtml(error.stack)}</div>` : ''}
+                ${error.userActions?.length ? `
+                    <div class="user-actions">
+                        <strong>User actions before error:</strong><br>
+                        ${error.userActions.map(a => `<div class="action-item">• ${escapeHtml(a)}</div>`).join('')}
+                    </div>
+                ` : ''}
+            `;
+
+            errorList.insertBefore(errorDiv, errorList.firstChild);
+
+            // Auto scroll
+            if (autoScroll) {
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function copyForClaude() {
+            generateClaudeFormat();
+            document.getElementById('copySection').style.display = 'block';
+            document.getElementById('copySection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generateClaudeFormat() {
+            if (errors.length === 0) {
+                alert('No errors to copy!');
+                return;
+            }
+
+            const report = `🔴 GAME ERRORS TO FIX
+
+I have ${errors.length} error(s) in my idle cultivation game. Please fix them:
+
+${errors.map((error, i) => `
+ERROR ${i + 1}:
+- Message: ${error.message}
+- File: ${error.file || 'unknown'}
+- Line: ${error.line || '?'}, Column: ${error.column || '?'}
+- Time: ${error.timestamp}
+
+Stack trace:
+${error.stack || 'No stack trace available'}
+
+${error.userActions?.length ? `User actions before error:
+${error.userActions.join(' → ')}` : ''}
+`).join('\n---\n')}
+
+Please provide fixes for these errors. The game uses vanilla JavaScript with modules.`;
+
+            document.getElementById('copyContent').textContent = report;
+        }
+
+        function copyToClipboard() {
+            const content = document.getElementById('copyContent').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('Copied to clipboard! Paste it in our conversation.');
+            }).catch(() => {
+                alert('Failed to copy. Please select and copy manually.');
+            });
+        }
+
+        function clearErrors() {
+            if (confirm('Clear all captured errors?')) {
+                errors = [];
+                uniqueErrorMap.clear();
+                document.getElementById('errorList').innerHTML =
+                    '<p style="color: #666; text-align: center; padding: 20px;">No errors yet. Open your game to start collecting!</p>';
+                document.getElementById('copySection').style.display = 'none';
+                updateStats();
+                document.getElementById('lastError').textContent = 'Never';
+            }
+        }
+
+        function downloadErrors() {
+            if (errors.length === 0) {
+                alert('No errors to download!');
+                return;
+            }
+
+            const data = {
+                session: {
+                    start: new Date(sessionStart).toISOString(),
+                    duration: Date.now() - sessionStart
+                },
+                errors: errors,
+                uniqueErrors: Array.from(uniqueErrorMap.entries()),
+                userActions: userActions
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `game-errors-${new Date().toISOString().replace(/:/g, '-')}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            document.getElementById('autoScrollBtn').textContent = `📜 Auto-Scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function createPMIssue() {
+            if (errors.length === 0) {
+                alert('No errors to create issue!');
+                return;
+            }
+
+            // Group similar errors
+            const errorGroups = new Map();
+            errors.forEach(error => {
+                const key = `${error.message}-${error.file}-${error.line}`;
+                if (!errorGroups.has(key)) {
+                    errorGroups.set(key, []);
+                }
+                errorGroups.get(key).push(error);
+            });
+
+            // Create PM-formatted issue
+            const issueContent = {
+                title: `Fix ${errorGroups.size} unique error(s) in game`,
+                type: 'bug',
+                priority: errors.some(e => e.message.includes('Critical')) ? 'critical' : 'high',
+                epic: 'error-fixes',
+                description: `# Error Report\n\nDetected ${errors.length} total errors (${errorGroups.size} unique)\n\n`,
+                errors: []
+            };
+
+            errorGroups.forEach((groupErrors, key) => {
+                const firstError = groupErrors[0];
+                issueContent.errors.push({
+                    message: firstError.message,
+                    file: firstError.file,
+                    line: firstError.line,
+                    column: firstError.column,
+                    stack: firstError.stack,
+                    count: groupErrors.length,
+                    firstOccurrence: groupErrors[0].timestamp,
+                    lastOccurrence: groupErrors[groupErrors.length - 1].timestamp,
+                    userActions: firstError.userActions
+                });
+            });
+
+            // Save to file for PM system
+            const pmData = {
+                command: '/pm:issue-create',
+                ...issueContent,
+                timestamp: new Date().toISOString(),
+                sessionId: sessionStart
+            };
+
+            // Create downloadable PM file
+            const blob = new Blob([JSON.stringify(pmData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pm-issue-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert('PM Issue file created! Upload this to Claude with:\n\n/pm:issue-import <filename>');
+        }
+
+        console.log('🤖 Claude Error Collector ready!');
+        console.log('Add this script to your game to start collecting errors.');
+    </script>
+</body>
+</html>

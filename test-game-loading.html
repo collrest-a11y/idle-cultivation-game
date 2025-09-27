@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Loading Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        .error {
+            color: #f00;
+            border-color: #f00;
+        }
+        .success {
+            color: #0f0;
+            border-color: #0f0;
+        }
+        .warning {
+            color: #ff0;
+            border-color: #ff0;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #333;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Game Loading Test</h1>
+
+    <div id="status" class="status">Initializing test...</div>
+
+    <div id="error-log"></div>
+
+    <button onclick="loadGame()">Load Game</button>
+    <button onclick="checkErrors()">Check for Errors</button>
+
+    <iframe id="game-frame" style="display:none;"></iframe>
+
+    <script>
+        let errors = [];
+        let consoleErrors = [];
+
+        // Intercept console errors from iframe
+        function setupErrorCapture(iframe) {
+            try {
+                const iframeWindow = iframe.contentWindow;
+
+                // Capture errors
+                iframeWindow.addEventListener('error', (event) => {
+                    errors.push({
+                        message: event.message,
+                        file: event.filename,
+                        line: event.lineno,
+                        column: event.colno,
+                        error: event.error
+                    });
+                    displayError(`Error: ${event.message} at ${event.filename}:${event.lineno}`);
+                });
+
+                // Capture unhandled promise rejections
+                iframeWindow.addEventListener('unhandledrejection', (event) => {
+                    errors.push({
+                        type: 'promise',
+                        reason: event.reason
+                    });
+                    displayError(`Promise Rejection: ${event.reason}`);
+                });
+
+                // Hook console.error
+                const originalError = iframeWindow.console.error;
+                iframeWindow.console.error = function(...args) {
+                    consoleErrors.push(args);
+                    displayError(`Console Error: ${args.join(' ')}`);
+                    originalError.apply(iframeWindow.console, args);
+                };
+
+            } catch (e) {
+                displayError(`Could not set up error capture: ${e.message}`);
+            }
+        }
+
+        function displayError(msg) {
+            const errorLog = document.getElementById('error-log');
+            const div = document.createElement('div');
+            div.className = 'status error';
+            div.textContent = msg;
+            errorLog.appendChild(div);
+        }
+
+        function displaySuccess(msg) {
+            const errorLog = document.getElementById('error-log');
+            const div = document.createElement('div');
+            div.className = 'status success';
+            div.textContent = msg;
+            errorLog.appendChild(div);
+        }
+
+        function loadGame() {
+            errors = [];
+            consoleErrors = [];
+            document.getElementById('error-log').innerHTML = '';
+
+            const iframe = document.getElementById('game-frame');
+            iframe.style.display = 'block';
+
+            // Set up error capture before loading
+            iframe.onload = function() {
+                setupErrorCapture(iframe);
+
+                // Check after a delay
+                setTimeout(() => {
+                    checkErrors();
+                    checkGameState(iframe);
+                }, 3000);
+            };
+
+            // Load the game
+            iframe.src = 'index.html';
+            document.getElementById('status').textContent = 'Loading game...';
+        }
+
+        function checkGameState(iframe) {
+            try {
+                const iframeWindow = iframe.contentWindow;
+
+                // Check if game object exists
+                if (iframeWindow.game) {
+                    displaySuccess('✅ Game object found');
+
+                    // Check initialization
+                    if (iframeWindow.game.isInitialized) {
+                        displaySuccess('✅ Game is initialized');
+                    } else {
+                        displayError('❌ Game is NOT initialized');
+                    }
+
+                    // Check if running
+                    if (iframeWindow.game.isRunning) {
+                        displaySuccess('✅ Game is running');
+                    } else {
+                        displayError('❌ Game is NOT running');
+                    }
+
+                    // Check for game systems
+                    const systems = [
+                        'eventManager',
+                        'gameState',
+                        'moduleManager',
+                        'gameLoop'
+                    ];
+
+                    systems.forEach(system => {
+                        if (iframeWindow.game[system]) {
+                            displaySuccess(`✅ ${system} exists`);
+                        } else {
+                            displayError(`❌ ${system} is missing`);
+                        }
+                    });
+
+                } else {
+                    displayError('❌ Game object not found - initialization failed');
+                }
+
+                // Check if loading screen was hidden
+                const loadingScreen = iframeWindow.document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    if (loadingScreen.classList.contains('hidden')) {
+                        displaySuccess('✅ Loading screen hidden');
+                    } else {
+                        displayError('❌ Loading screen still visible');
+                    }
+                }
+
+            } catch (e) {
+                displayError(`Could not check game state: ${e.message}`);
+            }
+        }
+
+        function checkErrors() {
+            const status = document.getElementById('status');
+
+            if (errors.length === 0 && consoleErrors.length === 0) {
+                status.textContent = '✅ No errors detected!';
+                status.className = 'status success';
+            } else {
+                status.textContent = `❌ Found ${errors.length} errors and ${consoleErrors.length} console errors`;
+                status.className = 'status error';
+            }
+        }
+
+        // Auto-load on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(loadGame, 500);
+        });
+    </script>
+</body>
+</html>

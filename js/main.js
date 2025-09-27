@@ -16,6 +16,7 @@ class IdleCultivationGame {
         this.moduleManager = null;
         this.progressiveLoader = null;
         this.loadingProgress = null;
+this.errorAnalytics = null;        this.errorDashboard = null;
 
         // Game configuration
         this.config = {
@@ -275,6 +276,7 @@ class IdleCultivationGame {
                 performanceMonitor: null // Will be set later
             });
             window.errorManager = this.errorManager; // Make globally accessible
+// Initialize ErrorAnalytics and ErrorDashboard            if (typeof ErrorAnalytics !== 'undefined' && typeof ErrorDashboard !== 'undefined') {                this.errorAnalytics = new ErrorAnalytics();                this.errorDashboard = new ErrorDashboard();                // Initialize dashboard with error manager and analytics                this.errorDashboard.initialize(this.errorManager, this.errorAnalytics).then(() => {                    console.log('🎯 ErrorDashboard initialized');                }).catch(error => {                    console.error('ErrorDashboard initialization failed:', error);                });                // Connect analytics to error manager                if (this.errorManager.onError) {                    const originalOnError = this.errorManager.onError.bind(this.errorManager);                    this.errorManager.onError = (error) => {                        originalOnError(error);                        if (this.errorAnalytics) {                            this.errorAnalytics.recordError(error);                        }                    };                }                // Make globally accessible for debugging                window.errorAnalytics = this.errorAnalytics;                window.errorDashboard = this.errorDashboard;            }
             console.log('🛡️ ErrorManager initialized');
         }
 

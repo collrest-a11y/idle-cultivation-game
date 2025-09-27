@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  fix-system:
+    build: .
+    container_name: automated-fix-system
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3001:3001"  # API
+      - "3002:3002"  # WebSocket
+      - "3003:3003"  # Dashboard
+      - "3004:3004"  # Metrics
+    volumes:
+      - ./logs:/app/logs
+      - ../:/game:ro  # Read-only access to game files
+      - ./src:/app/src  # For development hot-reload
+    networks:
+      - fix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Game server
+  game-server:
+    image: python:3.11-slim
+    container_name: game-server
+    working_dir: /game
+    command: python -m http.server 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../:/game:ro
+    networks:
+      - fix-network
+
+networks:
+  fix-network:
+    driver: bridge
+
+volumes:
+  logs:
+    driver: local

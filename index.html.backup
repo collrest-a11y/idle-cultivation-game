@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Cultivation - Ashes on the Wind</title>
+    <link rel="stylesheet" href="styles-gfl.css">
+    <link rel="stylesheet" href="css/views.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/skills.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <link rel="stylesheet" href="css/debug-dashboard.css">
+    <link rel="stylesheet" href="css/error-dashboard.css">
+
+    <!-- Inline Loading & Error Styles - Load immediately, no external dependencies -->
+    <style>
+        /* Loading Screen Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-container {
+            text-align: center;
+            max-width: 400px;
+            padding: 2rem;
+        }
+
+        .loading-logo {
+            margin-bottom: 2rem;
+        }
+
+        .cultivation-symbol {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .loading-logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .loading-logo .subtitle {
+            font-size: 1rem;
+            color: #b8c5d6;
+            font-style: italic;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 2rem auto;
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite;
+        }
+
+        .spinner-ring:nth-child(2) {
+            width: 70%;
+            height: 70%;
+            top: 15%;
+            left: 15%;
+            border-top-color: #4fc3f7;
+            animation-duration: 1.2s;
+            animation-direction: reverse;
+        }
+
+        .spinner-ring:nth-child(3) {
+            width: 40%;
+            height: 40%;
+            top: 30%;
+            left: 30%;
+            border-top-color: #667eea;
+            animation-duration: 0.9s;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.95); }
+        }
+
+        /* Loading Text & Progress */
+        .loading-text {
+            margin-top: 1.5rem;
+        }
+
+        .loading-text p {
+            color: #b8c5d6;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .loading-progress {
+            width: 100%;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #4fc3f7);
+            border-radius: 3px;
+            animation: progress 2s ease-in-out infinite;
+        }
+
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        /* Error Display Styles */
+        .error-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 14, 26, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            opacity: 1;
+            transition: opacity 0.3s ease-out;
+        }
+
+        .error-display.hidden {
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .error-container {
+            background: linear-gradient(135deg, #1a1f2e, #252d42);
+            border: 2px solid #ff4757;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(255, 71, 87, 0.3);
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .error-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: #ff4757;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            color: #b8c5d6;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .error-details {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .error-technical {
+            color: #6c7b7f;
+            font-family: monospace;
+            font-size: 0.875rem;
+            word-break: break-word;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .error-retry,
+        .error-details-toggle {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .error-retry {
+            background: linear-gradient(135deg, #00d4ff, #4fc3f7);
+            color: #0a0e1a;
+        }
+
+        .error-retry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
+        }
+
+        .error-details-toggle {
+            background: transparent;
+            border: 2px solid #4a90e2;
+            color: #4a90e2;
+        }
+
+        .error-details-toggle:hover {
+            background: rgba(74, 144, 226, 0.1);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .loading-logo h1 {
+                font-size: 1.5rem;
+            }
+
+            .cultivation-symbol {
+                font-size: 3rem;
+            }
+
+            .error-container {
+                padding: 1.5rem;
+            }
+
+            .error-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen - Shows immediately, works without JavaScript -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-container">
+            <div class="loading-logo">
+                <div class="cultivation-symbol">☯</div>
+                <h1>Idle Cultivation</h1>
+                <p class="subtitle">Ashes on the Wind</p>
+            </div>
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+            </div>
+            <div class="loading-text">
+                <p>Gathering spiritual essence...</p>
+                <div class="loading-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Display - Hidden by default, shows user-friendly errors -->
+    <div id="error-display" class="error-display hidden">
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h2 class="error-title">Cultivation Disrupted</h2>
+            <p class="error-message">An unexpected spiritual disturbance has occurred.</p>
+            <div class="error-details hidden">
+                <p class="error-technical">Technical details will appear here</p>
+            </div>
+            <div class="error-actions">
+                <button class="error-retry btn-primary">Retry Cultivation</button>
+                <button class="error-details-toggle btn-secondary">Show Details</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app">
+        <!-- Character Creation Modal -->
+        <div id="character-creation" class="modal">
+            <div class="modal-content">
+                <h2>Memory Fragments</h2>
+                <p class="prologue-text">The lantern flickers with your memories. Choose what shaped you...</p>
+
+                <div class="fragment-section">
+                    <h3>Origin</h3>
+                    <div class="fragment-choices" data-category="origin">
+                        <button class="fragment-choice" data-choice="dust-road">
+                            <h4>Dust Road Orphan</h4>
+                            <p>You learned to fight hungry</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="ink-pavilion">
+                            <h4>Ink Pavilion Disciple</h4>
+                            <p>Study made your will a blade</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="exiled-heir">
+                            <h4>Exiled Heir</h4>
+                            <p>You lost everything except your name</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="hermit">
+                            <h4>Hermit of the North Ridge</h4>
+                            <p>Storms taught you to listen first</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fragment-section">
+                    <h3>Vow</h3>
+                    <div class="fragment-choices" data-category="vow">
+                        <button class="fragment-choice" data-choice="protect">
+                            <h4>Protect the Small</h4>
+                            <p>Guard breaks don't shake you</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="pursue">
+                            <h4>Pursue the Hidden Law</h4>
+                            <p>Truth has a sound</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="break">
+                            <h4>Break the Chain</h4>
+                            <p>Shackles are just metal</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="settle">
+                            <h4>Settle a Debt</h4>
+                            <p>You keep receipts</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fragment-section">
+                    <h3>Mark of Fate</h3>
+                    <div class="fragment-choices" data-category="mark">
+                        <button class="fragment-choice" data-choice="thunder">
+                            <h4>Thunder Whisper (Qi)</h4>
+                            <p>First strike bites</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="frost">
+                            <h4>Frostbrand Scar (Body)</h4>
+                            <p>Cold makes clean cuts</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="twin">
+                            <h4>Twin-Pulse Sigil (Dual)</h4>
+                            <p>Two rhythms, one body</p>
+                        </button>
+                        <button class="fragment-choice" data-choice="hollow">
+                            <h4>Hollow Gourd (Utility)</h4>
+                            <p>You carry what others spill</p>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="begin-cultivation" class="btn-primary" disabled>Begin Cultivation</button>
+            </div>
+        </div>
+
+        <!-- Main Game Container (for dynamic views) -->
+        <div id="game-container">
+            <div id="gameView"></div>
+        </div>
+
+        <!-- Main Game Interface -->
+        <div id="game-interface" class="hidden">
+            <!-- Header -->
+            <header class="game-header">
+                <div class="resources">
+                    <div class="resource">
+                        <div class="resource-icon">💎</div>
+                        <div class="resource-value" id="jade-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">🔮</div>
+                        <div class="resource-value" id="spirit-crystal-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">⭐</div>
+                        <div class="resource-value" id="shard-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">🧩</div>
+                        <div class="resource-value" id="skill-fragments-count">0</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">📜</div>
+                        <div class="resource-value" id="skill-points-count">0</div>
+                    </div>
+                </div>
+                <div class="realm-info">
+                    <span id="current-realm">Body Refinement 1</span>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="game-content">
+                <!-- Cultivation Tab -->
+                <div id="cultivation-tab" class="tab-content active">
+                    <div class="cultivation-paths">
+                        <div class="path qi-path card">
+                            <div class="card-header">
+                                <h3 class="card-title">Qi Cultivation</h3>
+                                <div class="stat-value" id="qi-level">Level 0</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="qi-progress"></div>
+                            </div>
+                            <div class="path-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">Progress</div>
+                                    <div class="stat-value" id="qi-progress-text">0/100</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Per Second</div>
+                                    <div class="stat-value" id="qi-per-second">1.0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="path body-path card">
+                            <div class="card-header">
+                                <h3 class="card-title">Body Cultivation</h3>
+                                <div class="stat-value" id="body-level">Level 0</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="body-progress"></div>
+                            </div>
+                            <div class="path-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">Progress</div>
+                                    <div class="stat-value" id="body-progress-text">0/100</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Per Second</div>
+                                    <div class="stat-value" id="body-per-second">1.0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="path dual-path card locked" id="dual-path">
+                            <div class="card-header">
+                                <h3 class="card-title">Dual Cultivation</h3>
+                            </div>
+                            <div class="unlock-requirement text-center text-muted">
+                                <p>Unlocks at Foundation Realm</p>
+                                <p>Master both Qi and Body paths to unlock synergy</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cultivation-actions">
+                        <button id="meditate-btn" class="btn btn-secondary">
+                            <span>⚡</span> Meditate (2x speed for 5 min)
+                        </button>
+                        <button id="breakthrough-btn" class="btn btn-primary" disabled>
+                            <span>🔥</span> Breakthrough
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loadout Tab -->
+                <div id="loadout-tab" class="tab-content">
+                    <div class="loadout-container">
+                        <div class="equipment-section card">
+                            <div class="card-header">
+                                <h3 class="card-title">Scripture Loadout</h3>
+                                <button class="btn btn-secondary btn-small">Auto-Optimize</button>
+                            </div>
+                            <div class="equipment-grid">
+                                <div class="slot qi-slot card" data-slot="qi">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">⚡</div>
+                                        <div class="slot-title">Qi Scripture</div>
+                                    </div>
+                                    <div class="slot-content" id="qi-slot">
+                                        <div class="empty-slot">Drop scripture here</div>
+                                    </div>
+                                </div>
+                                <div class="slot body-slot card" data-slot="body">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">💪</div>
+                                        <div class="slot-title">Body Scripture</div>
+                                    </div>
+                                    <div class="slot-content" id="body-slot">
+                                        <div class="empty-slot">Drop scripture here</div>
+                                    </div>
+                                </div>
+                                <div class="slot dual-slot card locked" data-slot="dual">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">🔗</div>
+                                        <div class="slot-title">Dual Scripture</div>
+                                    </div>
+                                    <div class="slot-content">
+                                        <div class="locked-slot">Foundation Realm Required</div>
+                                    </div>
+                                </div>
+                                <div class="slot extra-slot card" data-slot="extra1">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">✨</div>
+                                        <div class="slot-title">Extra Slot 1</div>
+                                    </div>
+                                    <div class="slot-content">
+                                        <div class="empty-slot">Any scripture type</div>
+                                    </div>
+                                </div>
+                                <div class="slot extra-slot card" data-slot="extra2">
+                                    <div class="slot-header">
+                                        <div class="slot-icon">✨</div>
+                                        <div class="slot-title">Extra Slot 2</div>
+                                    </div>
+                                    <div class="slot-content">
+                                        <div class="empty-slot">Any scripture type</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-panel card">
+                            <div class="card-header">
+                                <h3 class="card-title">Combat Statistics</h3>
+                                <div class="power-rating">
+                                    <span class="stat-label">Total Power</span>
+                                    <span class="stat-value" id="total-dps">1.0</span>
+                                </div>
+                            </div>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">Flat Damage</div>
+                                    <div class="stat-value" id="flat-damage">0</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Damage Mult</div>
+                                    <div class="stat-value" id="damage-mult">1.0x</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Attack Speed</div>
+                                    <div class="stat-value" id="attack-speed">1.0</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Critical Rate</div>
+                                    <div class="stat-value" id="crit-chance">5%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scriptures Tab -->
+                <div id="scriptures-tab" class="tab-content">
+                    <div class="gacha-section">
+                        <div class="banner-selection">
+                            <button class="banner-btn active" data-banner="standard">Standard Banner</button>
+                            <button class="banner-btn" data-banner="focused">Focused Banner</button>
+                            <button class="banner-btn" data-banner="event">Event Banner</button>
+                        </div>
+
+                        <div class="pull-section">
+                            <div class="pity-counter">
+                                Pity: <span id="pity-counter">0</span>/80
+                            </div>
+                            <div class="pull-buttons">
+                                <button id="single-pull" class="btn-secondary">Single Pull (100 💎)</button>
+                                <button id="ten-pull" class="btn-primary">10-Pull (1000 💎)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scripture-inventory">
+                        <h3>Scripture Collection</h3>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="qi">Qi</button>
+                            <button class="filter-btn" data-filter="body">Body</button>
+                            <button class="filter-btn" data-filter="dual">Dual</button>
+                            <button class="filter-btn" data-filter="utility">Utility</button>
+                        </div>
+                        <div id="scripture-grid" class="scripture-grid"></div>
+                    </div>
+                <!-- Combat Tab -->
+                <div id="combat-tab" class="tab-content">
+                    <div class="combat-interface">
+                        <div class="combat-status">
+                            <h3>Combat Record</h3>
+                            <div class="combat-stats">
+                                <div class="stat-item">
+                                    <span>Wins:</span>
+                                    <span id="combat-wins">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span>Losses:</span>
+                                    <span id="combat-losses">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span>Win Streak:</span>
+                                    <span id="combat-streak">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span>Rank:</span>
+                                    <span id="combat-rank">1000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="combat-actions">
+                            <h3>Arena Duels</h3>
+                            <p>Challenge other cultivators in asynchronous combat!</p>
+                            <div class="duel-options">
+                                <button id="find-opponent" class="btn-primary">Find Opponent</button>
+                                <button id="practice-duel" class="btn-secondary">Practice Duel</button>
+                                <button id="ranked-duel" class="btn-secondary">Ranked Match</button>
+                            </div>
+                            <div id="duel-queue" class="duel-queue">
+                                <p>No active duels</p>
+                            </div>
+                        </div>
+
+                        <div class="combat-simulation">
+                            <h3>Last Combat</h3>
+                            <div id="combat-log" class="combat-log">
+                                <p>No recent combat history</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skills Tab -->
+                <div id="skills-tab" class="tab-content">
+                    <div class="skills-interface" id="skills-interface">
+                        <!-- Skills content will be populated by SkillTreeComponent -->
+                    </div>
+                </div>
+
+                <!-- Sect Tab -->
+                <div id="sect-tab" class="tab-content">
+                    <div class="sect-interface">
+                        <div class="sect-status" id="sect-status">
+                            <div class="no-sect">
+                                <h3>No Sect</h3>
+                                <p>Join a sect to collaborate with other cultivators and unlock powerful buffs!</p>
+                                <div class="sect-actions">
+                                    <button id="find-sect" class="btn-primary">Find Sect</button>
+                                    <button id="create-sect" class="btn-secondary">Create Sect</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sect-details hidden" id="sect-details">
+                            <div class="sect-header">
+                                <h3 id="sect-name">Sect Name</h3>
+                                <div class="sect-info">
+                                    <span>Members: <span id="sect-members">0/50</span></span>
+                                    <span>Your Contribution: <span id="sect-contribution">0</span></span>
+                                </div>
+                            </div>
+
+                            <div class="sect-buffs">
+                                <h4>Active Buffs</h4>
+                                <div id="sect-buff-list" class="buff-list">
+                                    <p>No active buffs</p>
+                                </div>
+                            </div>
+
+                            <div class="sect-rituals">
+                                <h4>Sect Rituals</h4>
+                                <div id="sect-ritual-list" class="ritual-list">
+                                    <!-- Rituals will be populated here -->
+                                </div>
+                            </div>
+
+                            <div class="sect-market">
+                                <h4>Sect Market</h4>
+                                <div id="sect-market-items" class="market-items">
+                                    <!-- Market items will be populated here -->
+                                </div>
+                            </div>
+
+                            <div class="sect-actions">
+                                <button id="donate-crystals" class="btn-secondary">Donate Spirit Crystals</button>
+                                <button id="leave-sect" class="btn-danger">Leave Sect</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav">
+                <button class="nav-btn active" data-tab="cultivation">Cultivate</button>
+                <button class="nav-btn" data-tab="loadout">Loadout</button>
+                <button class="nav-btn" data-tab="scriptures">Scriptures</button>
+                <button class="nav-btn" data-tab="skills">Skills</button>
+                <button class="nav-btn" data-tab="combat">Combat</button>
+                <button class="nav-btn" data-tab="sect">Sect</button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Loading Progress Container -->
+    <div id="loading-container"></div>
+
+    <!-- Performance Optimization Scripts - Issue #119 -->
+    <script src="js/core/LoadingSequenceOptimizer.js"></script>
+    <script src="js/core/ConsoleErrorSuppressor.js"></script>
+    <script src="js/core/DOMQueryOptimizer.js"></script>
+    <script src="js/core/RenderOptimizer.js"></script>
+    <script src="js/core/EnhancedPerformanceMonitor.js"></script>
+
+    <!-- Production Configuration -->
+    <script src="production-config.js"></script>
+
+    <!-- Core Game Engine -->
+    <script src="js/core/EventManager.js"></script>
+    <script src="js/core/ErrorManager.js"></script>
+    <script src="js/utils/ErrorAnalytics.js"></script>
+    <script src="js/ui/ErrorDashboard.js"></script>
+    <script src="js/core/SafeMode.js"></script>
+    <script src="js/core/GameState.js"></script>
+
+    <!-- Health Monitoring -->
+    <script src="health-check.js"></script>
+    <script src="js/core/TimeManager.js"></script>
+    <script src="js/core/PerformanceMonitor.js"></script>
+    <script src="js/core/BalanceManager.js"></script>
+    <script src="js/core/AnimationManager.js"></script>
+    <script src="js/core/MobileManager.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/ModuleManager.js"></script>
+    <script src="js/core/ProgressiveLoader.js"></script>
+
+    <!-- Additional Core Systems -->
+    <script src="js/utils/StorageUtils.js"></script>
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/DataValidator.js"></script>
+    <script src="js/core/MigrationManager.js"></script>
+    <script src="js/core/StateRecoveryManager.js"></script>
+    <script src="js/core/GameSaveSystem.js"></script>
+    <script src="js/utils/Compression.js"></script>
+
+    <!-- Game Data -->
+    <script src="js/data/cultivation-data.js"></script>
+    <script src="js/data/combat-data.js"></script>
+    <script src="js/data/sect-data.js"></script>
+    <script src="js/data/skill-data.js"></script>
+
+    <!-- Cultivation System Components -->
+    <script src="js/systems/CultivationSystem.js"></script>
+    <script src="js/systems/RealmManager.js"></script>
+    <script src="js/systems/TechniqueManager.js"></script>
+    <script src="js/systems/OfflineCalculator.js"></script>
+    <script src="js/systems/CultivationIntegration.js"></script>
+
+    <!-- Sect System Components -->
+    <script src="js/systems/SectSystem.js"></script>
+    <script src="js/systems/SectManager.js"></script>
+    <script src="js/systems/SectActivities.js"></script>
+    <script src="js/systems/SectCompetition.js"></script>
+    <script src="js/systems/SectIntegration.js"></script>
+
+    <!-- Game Mechanics Systems (Issue #113 Fix) -->
+    <script src="js/systems/CraftingSystem.js"></script>
+    <script src="js/systems/ShopManager.js"></script>
+
+    <!-- Skills System Components -->
+    <script src="js/managers/SkillManager.js"></script>
+    <script src="js/systems/SkillSystem.js"></script>
+    <script src="js/systems/SkillIntegration.js"></script>
+
+    <!-- UI Framework -->
+    <script src="js/ui/BaseComponent.js"></script>
+    <script src="js/ui/UIManager.js"></script>
+    <script src="js/ui/LoadingProgress.js"></script>
+    <script src="js/ui/SafeModeUI.js"></script>
+    <script src="js/ui/components/RecoveryModal.js"></script>
+
+    <!-- UI Components -->
+    <script src="js/ui/components/SkillTreeComponent.js"></script>
+    <script src="js/ui/components/SkillDetailModal.js"></script>
+
+    <!-- View System -->
+    <script src="js/views/GameView.js"></script>
+    <script src="js/views/ViewManager.js"></script>
+    <script src="js/views/MainMenuView.js"></script>
+    <script src="js/views/CultivationView.js"></script>
+    <script src="js/views/ScriptureView.js"></script>
+    <script src="js/views/CombatView.js"></script>
+    <script src="js/views/SectView.js"></script>
+    <script src="js/views/QuestView.js"></script>
+    <script src="js/views/ViewIntegration.js"></script>
+
+    <!-- CP Progression Systems -->
+    <script src="js/systems/PowerCalculator.js"></script>
+    <script src="js/systems/MountSystem.js"></script>
+    <script src="js/systems/WingSystem.js"></script>
+    <script src="js/systems/AccessorySystem.js"></script>
+    <script src="js/systems/RuneSystem.js"></script>
+    <script src="js/systems/MeridianSystem.js"></script>
+    <script src="js/systems/DantianSystem.js"></script>
+    <script src="js/systems/SoulSystem.js"></script>
+
+    <!-- Character Creation Fallback System -->
+    <script src="js/character-creation-fallback.js"></script>
+
+    <!-- System Health Dashboard (loads before main for early error tracking) -->
+    <script src="js/system-health-dashboard.js"></script>
+
+    <!-- Test Suites -->
+    <script src="js/tests/test-state-validation.js"></script>
+    <script src="js/tests/save-system-integration-tests.js"></script>
+    <script src="js/tests/ErrorDashboard.test.js"></script>
+
+    <!-- Main Game Entry Point -->
+    <script src="js/main.js"></script>
+
+    <!-- Loading & Error Control Script - Runs immediately, no dependencies -->
+    <script>
+        // Loading Screen Controller
+        window.LoadingManager = {
+            loadingScreen: null,
+            errorDisplay: null,
+
+            init() {
+                this.loadingScreen = document.getElementById('loading-screen');
+                this.errorDisplay = document.getElementById('error-display');
+
+                // Set up error display controls
+                const retryBtn = document.querySelector('.error-retry');
+                const toggleBtn = document.querySelector('.error-details-toggle');
+                const detailsDiv = document.querySelector('.error-details');
+
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', () => {
+                        window.location.reload();
+                    });
+                }
+
+                if (toggleBtn && detailsDiv) {
+                    toggleBtn.addEventListener('click', () => {
+                        detailsDiv.classList.toggle('hidden');
+                        toggleBtn.textContent = detailsDiv.classList.contains('hidden')
+                            ? 'Show Details'
+                            : 'Hide Details';
+                    });
+                }
+            },
+
+            // Hide loading screen - call when game is ready
+            hide() {
+                if (this.loadingScreen) {
+                    this.loadingScreen.classList.add('hidden');
+                    // Remove from DOM after animation completes
+                    setTimeout(() => {
+                        if (this.loadingScreen && this.loadingScreen.parentNode) {
+                            this.loadingScreen.parentNode.removeChild(this.loadingScreen);
+                        }
+                    }, 500);
+                }
+            },
+
+            // Show loading screen - useful for reinitialization
+            show() {
+                if (this.loadingScreen) {
+                    this.loadingScreen.classList.remove('hidden');
+                }
+            },
+
+            // Update loading message
+            updateMessage(message) {
+                const loadingText = document.querySelector('.loading-text p');
+                if (loadingText) {
+                    loadingText.textContent = message;
+                }
+            },
+
+            // Show error with custom message
+            showError(userMessage, technicalDetails = null) {
+                // Hide loading screen first
+                this.hide();
+
+                if (this.errorDisplay) {
+                    // Update error message
+                    const messageEl = this.errorDisplay.querySelector('.error-message');
+                    if (messageEl) {
+                        messageEl.textContent = userMessage;
+                    }
+
+                    // Update technical details if provided
+                    if (technicalDetails) {
+                        const detailsEl = this.errorDisplay.querySelector('.error-technical');
+                        if (detailsEl) {
+                            detailsEl.textContent = technicalDetails;
+                        }
+                    }
+
+                    // Show error display
+                    this.errorDisplay.classList.remove('hidden');
+                }
+            },
+
+            // Hide error display
+            hideError() {
+                if (this.errorDisplay) {
+                    this.errorDisplay.classList.add('hidden');
+                }
+            }
+        };
+
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.LoadingManager.init();
+            });
+        } else {
+            window.LoadingManager.init();
+        }
+
+        // Global error handler - catches unhandled errors
+        window.addEventListener('error', (event) => {
+            console.error('Global error caught:', event.error);
+
+            // Show user-friendly error
+            const userMessage = 'The game encountered an unexpected error during initialization. Please refresh the page to try again.';
+            const technicalDetails = event.error ?
+                `${event.error.message}\n${event.error.stack || ''}` :
+                event.message;
+
+            window.LoadingManager.showError(userMessage, technicalDetails);
+        });
+
+        // Catch promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+
+            const userMessage = 'The game failed to load properly. Please check your internet connection and refresh the page.';
+            const technicalDetails = event.reason ?
+                (event.reason.stack || event.reason.toString()) :
+                'Unknown promise rejection';
+
+            window.LoadingManager.showError(userMessage, technicalDetails);
+        });
+
+        // Auto-hide loading screen after 10 seconds as fallback
+        // This ensures users aren't stuck on loading screen forever
+        setTimeout(() => {
+            if (window.LoadingManager && window.LoadingManager.loadingScreen &&
+                !window.LoadingManager.loadingScreen.classList.contains('hidden')) {
+                console.warn('Loading screen timeout - hiding automatically');
+                window.LoadingManager.hide();
+            }
+        }, 10000);
+
+        // Initialize Performance Optimizations - Issue #119
+        if (window.loadingSequenceOptimizer) {
+            window.loadingSequenceOptimizer.optimizeLoading();
+        }
+
+        if (window.enhancedPerformanceMonitor) {
+            console.log('✅ Enhanced performance monitoring active');
+        }
+
+        // Add performance report to window
+        window.getPerformanceReport = function() {
+            const reports = {};
+
+            if (window.enhancedPerformanceMonitor) {
+                reports.performance = window.enhancedPerformanceMonitor.getMetrics();
+            }
+
+            if (window.domQueryOptimizer) {
+                reports.domQueries = window.domQueryOptimizer.getStats();
+            }
+
+            if (window.consoleErrorSuppressor) {
+                reports.console = window.consoleErrorSuppressor.getStats();
+            }
+
+            if (window.renderOptimizer) {
+                reports.rendering = window.renderOptimizer.getStats();
+            }
+
+            console.log('📊 Performance Report:', reports);
+            return reports;
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "name": "automated-fix-system",
+  "version": "1.0.0",
+  "description": "Production-ready automated error detection and fix system using Claude AI",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node tests/test-system.js",
+    "dashboard": "node dashboard/server.js",
+    "monitor": "node src/monitor.js",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "setup": "node scripts/setup.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "dotenv": "^16.3.1",
+    "fs-extra": "^11.2.0",
+    "eslint": "^8.54.0",
+    "puppeteer": "^21.5.2",
+    "winston": "^3.11.0",
+    "node-cron": "^3.0.3",
+    "cors": "^2.8.5",
+    "compression": "^1.7.4",
+    "helmet": "^7.1.0",
+    "rate-limiter-flexible": "^3.0.0",
+    "socket.io": "^4.5.4",
+    "chalk": "^5.3.0",
+    "ora": "^7.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "@types/node": "^20.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
